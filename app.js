@@ -88,6 +88,28 @@ app.delete("/user/words", authMiddleware, (req, res) => {
 });
 
 // Update edge relation type
+// Delete edge from user's view (user-level exclusion)
+app.delete("/edges", authMiddleware, (req, res) => {
+  const { from_word, to_word } = req.query;
+  if (!from_word || !to_word) return res.status(400).json({ error: "from_word and to_word required" });
+  db.prepare(`INSERT OR IGNORE INTO user_excluded_edges (user_id, from_word, to_word) VALUES (?, ?, ?)`).run(req.userId, from_word, to_word);
+  db.prepare(`INSERT OR IGNORE INTO user_excluded_edges (user_id, from_word, to_word) VALUES (?, ?, ?)`).run(req.userId, to_word, from_word);
+  res.json({ ok: true });
+});
+
+// Add edge between two existing words
+app.post("/user/add-edge", authMiddleware, (req, res) => {
+  const { from_word, to_word, relation_type } = req.body;
+  if (!from_word || !to_word) return res.status(400).json({ error: "from_word and to_word required" });
+  const type = relation_type || "related";
+  db.prepare(`INSERT OR IGNORE INTO edges (from_word, to_word, relation_type) VALUES (?, ?, ?)`).run(from_word, to_word, type);
+  db.prepare(`INSERT OR IGNORE INTO reverse_edges (from_word, to_word, relation_type) VALUES (?, ?, ?)`).run(to_word, from_word, type);
+  // Restore if previously excluded
+  db.prepare(`DELETE FROM user_excluded_edges WHERE user_id = ? AND from_word = ? AND to_word = ?`).run(req.userId, from_word, to_word);
+  db.prepare(`DELETE FROM user_excluded_edges WHERE user_id = ? AND from_word = ? AND to_word = ?`).run(req.userId, to_word, from_word);
+  res.json({ ok: true });
+});
+
 app.put("/edges", authMiddleware, (req, res) => {
   const { from_word, to_word, relation_type } = req.body;
   if (!from_word || !to_word || !relation_type) return res.status(400).json({ error: "from_word, to_word, relation_type required" });
@@ -142,12 +164,20 @@ app.get("/user/graph-data", authMiddleware, (req, res) => {
       FROM user_graphs ug
       JOIN edges e ON e.from_word = ug.root_word
       WHERE ug.user_id = ?
+    ),
+    visible AS (
+      SELECT word FROM user_words
+      WHERE word NOT IN (SELECT word FROM user_excluded_words WHERE user_id = ?)
     )
     SELECT e.from_word, e.to_word, e.relation_type
     FROM edges e
-    JOIN user_words uw1 ON uw1.word = e.from_word
-    JOIN user_words uw2 ON uw2.word = e.to_word
-  `).all(req.userId, req.userId);
+    JOIN visible uw1 ON uw1.word = e.from_word
+    JOIN visible uw2 ON uw2.word = e.to_word
+    WHERE NOT EXISTS (
+      SELECT 1 FROM user_excluded_edges uee
+      WHERE uee.user_id = ? AND uee.from_word = e.from_word AND uee.to_word = e.to_word
+    )
+  `).all(req.userId, req.userId, req.userId, req.userId);
 
   const nodes = words.map(w => ({
     data: { id: w.word, definition: w.definition, mastered: w.mastered, isRoot: w.is_root }

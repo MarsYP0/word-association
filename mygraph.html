@@ -8,16 +8,11 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f0f2f5; display: flex; flex-direction: column; height: 100vh; }
 
+    /* ── Header ── */
     .header {
-      padding: 0 20px;
-      height: 54px;
-      background: white;
-      border-bottom: 1px solid #e0e0e0;
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      flex-shrink: 0;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      padding: 0 20px; height: 54px; background: white;
+      border-bottom: 1px solid #e0e0e0; display: flex; align-items: center;
+      gap: 14px; flex-shrink: 0; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
     }
     .brand { font-size: 16px; font-weight: 700; color: #333; text-decoration: none; }
     .nav-links { display: flex; gap: 16px; flex: 1; }
@@ -25,34 +20,35 @@
     .nav-links a:hover { color: #4CAF50; }
     .nav-links a.active { color: #4CAF50; font-weight: 600; }
     #status { font-size: 13px; color: #888; }
-    .add-word-btn {
-      padding: 7px 16px;
-      background: #4CAF50;
-      color: white;
-      border: none;
-      border-radius: 16px;
-      cursor: pointer;
-      font-size: 13px;
+    .hdr-btn {
+      padding: 6px 14px; border-radius: 16px; border: none; cursor: pointer;
+      font-size: 13px; white-space: nowrap;
     }
-    .add-word-btn:hover { background: #43a047; }
+    .hdr-btn-green { background: #4CAF50; color: white; }
+    .hdr-btn-green:hover { background: #43a047; }
+    .hdr-btn-outline { background: white; color: #555; border: 1px solid #d0d0d0; }
+    .hdr-btn-outline:hover { border-color: #4CAF50; color: #4CAF50; }
     .username { font-size: 13px; color: #333; font-weight: 600; }
     .logout-btn { font-size: 13px; color: #888; cursor: pointer; background: none; border: none; }
     .logout-btn:hover { color: #E74C3C; }
 
+    /* ── Layout ── */
     .main { display: flex; flex: 1; overflow: hidden; }
     #graph { flex: 1; position: relative; }
 
-    /* Node info panel */
+    /* ── Hover tooltip ── */
+    .tooltip {
+      position: fixed; background: rgba(30,30,30,0.88); color: white;
+      padding: 8px 13px; border-radius: 8px; font-size: 13px;
+      pointer-events: none; display: none; max-width: 260px;
+      z-index: 100; line-height: 1.5;
+    }
+
+    /* ── Node info panel ── */
     .info-panel {
-      width: 260px;
-      background: white;
-      border-left: 1px solid #e0e0e0;
-      padding: 20px;
-      display: none;
-      flex-direction: column;
-      gap: 14px;
-      overflow-y: auto;
-      flex-shrink: 0;
+      width: 260px; background: white; border-left: 1px solid #e0e0e0;
+      padding: 20px; display: none; flex-direction: column; gap: 12px;
+      overflow-y: auto; flex-shrink: 0;
     }
     .info-panel.open { display: flex; }
     .panel-close { align-self: flex-end; cursor: pointer; color: #aaa; font-size: 18px; background: none; border: none; }
@@ -60,6 +56,7 @@
     .panel-word { font-size: 26px; font-weight: 700; color: #1565C0; }
     .panel-def { font-size: 14px; color: #555; line-height: 1.6; }
     .panel-def.empty { color: #bbb; font-style: italic; }
+    .panel-divider { border: none; border-top: 1px solid #f0f0f0; }
     .mastered-btn {
       padding: 10px; border-radius: 8px; border: none; cursor: pointer;
       font-size: 14px; font-weight: 600; transition: all 0.2s;
@@ -75,61 +72,46 @@
     }
     .explore-btn:hover { border-color: #4CAF50; color: #4CAF50; }
 
-    /* Edge edit panel */
+    /* Connect-from-panel inline form */
+    .connect-form { display: none; flex-direction: column; gap: 8px; background: #f9f9f9; border-radius: 10px; padding: 12px; }
+    .connect-form.open { display: flex; }
+    .connect-form label { font-size: 12px; color: #777; }
+    .connect-form select { padding: 7px 10px; border: 1px solid #d0d0d0; border-radius: 8px; font-size: 13px; outline: none; }
+    .connect-form-actions { display: flex; gap: 8px; }
+    .btn-sm-green { flex: 1; padding: 8px; background: #4CAF50; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; }
+    .btn-sm-green:hover { background: #43a047; }
+    .btn-sm-gray  { flex: 1; padding: 8px; background: #f0f0f0; color: #555; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; }
+    .btn-sm-gray:hover { background: #e0e0e0; }
+
+    /* ── Edge floating panel ── */
     .edge-panel {
-      position: fixed;
-      background: white;
-      border: 1px solid #e0e0e0;
-      border-radius: 12px;
-      padding: 16px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.12);
-      display: none;
-      flex-direction: column;
-      gap: 10px;
-      z-index: 200;
-      min-width: 220px;
+      position: fixed; background: white; border: 1px solid #e0e0e0;
+      border-radius: 12px; padding: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+      display: none; flex-direction: column; gap: 10px; z-index: 200; min-width: 220px;
     }
     .edge-panel.open { display: flex; }
     .edge-panel-title { font-size: 13px; font-weight: 600; color: #333; }
     .edge-panel-label { font-size: 12px; color: #888; }
-    .edge-panel select {
-      padding: 7px 10px;
-      border: 1px solid #d0d0d0;
-      border-radius: 8px;
-      font-size: 13px;
-      outline: none;
-    }
-    .edge-panel-actions { display: flex; gap: 8px; }
-    .btn-save { flex: 1; padding: 8px; background: #4CAF50; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; }
+    .edge-panel select { padding: 7px 10px; border: 1px solid #d0d0d0; border-radius: 8px; font-size: 13px; outline: none; }
+    .edge-panel-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn-save   { flex: 1; padding: 8px; background: #4CAF50; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; }
     .btn-save:hover { background: #43a047; }
     .btn-cancel { flex: 1; padding: 8px; background: #f5f5f5; color: #555; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; }
     .btn-cancel:hover { background: #e0e0e0; }
+    .btn-delete-edge { width: 100%; padding: 8px; background: #fff0f0; color: #c62828; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; }
+    .btn-delete-edge:hover { background: #ffcdd2; }
 
-    /* Add word modal */
+    /* ── Modals ── */
     .modal-overlay {
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,0.4);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 300;
+      position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+      display: none; align-items: center; justify-content: center; z-index: 300;
     }
     .modal-overlay.open { display: flex; }
-    .modal-box {
-      background: white;
-      border-radius: 16px;
-      padding: 28px;
-      width: 420px;
-      box-shadow: 0 8px 40px rgba(0,0,0,0.16);
-    }
+    .modal-box { background: white; border-radius: 16px; padding: 28px; width: 420px; box-shadow: 0 8px 40px rgba(0,0,0,0.16); }
     .modal-title { font-size: 18px; font-weight: 700; color: #222; margin-bottom: 20px; }
     .form-group { margin-bottom: 14px; }
     .form-group label { display: block; font-size: 13px; color: #555; margin-bottom: 5px; }
-    .form-group input, .form-group select {
-      width: 100%; padding: 9px 12px;
-      border: 1px solid #d0d0d0; border-radius: 8px;
-      font-size: 14px; outline: none;
-    }
+    .form-group input, .form-group select { width: 100%; padding: 9px 12px; border: 1px solid #d0d0d0; border-radius: 8px; font-size: 14px; outline: none; }
     .form-group input:focus, .form-group select:focus { border-color: #4CAF50; }
     .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
     .modal-submit { flex: 1; padding: 11px; background: #4CAF50; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; }
@@ -137,26 +119,21 @@
     .modal-submit:disabled { background: #aaa; cursor: not-allowed; }
     .modal-cancel { flex: 1; padding: 11px; background: #f5f5f5; color: #555; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; }
     .modal-cancel:hover { background: #e0e0e0; }
-    .modal-error { font-size: 13px; color: #c62828; margin-top: 8px; }
+    .modal-error { font-size: 13px; color: #c62828; margin-top: 6px; min-height: 18px; }
 
-    /* Legend */
+    /* ── Legend ── */
     .legend {
-      position: fixed; bottom: 20px; right: 20px;
-      background: white; border: 1px solid #e0e0e0; border-radius: 10px;
-      padding: 10px 14px; font-size: 11px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+      position: fixed; bottom: 20px; right: 20px; background: white;
+      border: 1px solid #e0e0e0; border-radius: 10px; padding: 10px 14px;
+      font-size: 11px; box-shadow: 0 2px 8px rgba(0,0,0,0.07);
     }
     .legend.panel-open { right: 276px; }
     .legend-title { font-weight: 600; color: #333; margin-bottom: 6px; }
     .legend-item { display: flex; align-items: center; gap: 7px; margin: 4px 0; color: #555; }
-    .legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+    .legend-dot  { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
     .legend-line { width: 24px; height: 3px; border-radius: 2px; flex-shrink: 0; }
 
-    .empty-state {
-      position: absolute; top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      text-align: center; color: #aaa;
-    }
+    .empty-state { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center; color: #aaa; }
     .empty-state a { color: #4CAF50; text-decoration: none; }
   </style>
 </head>
@@ -171,7 +148,8 @@
     <a href="/review.html">复习单词</a>
   </div>
   <span id="status"></span>
-  <button class="add-word-btn" onclick="openModal()">+ 添加词汇</button>
+  <button class="hdr-btn hdr-btn-green"   onclick="openAddWordModal()">+ 添加词汇</button>
+  <button class="hdr-btn hdr-btn-outline" onclick="openAddEdgeModal()">↔ 建立关联</button>
   <span class="username" id="username-label"></span>
   <button class="logout-btn" onclick="logout()">退出</button>
 </div>
@@ -187,61 +165,115 @@
   <div class="info-panel" id="info-panel">
     <button class="panel-close" onclick="closePanel()">✕</button>
     <div class="panel-word" id="panel-word"></div>
-    <div class="panel-def" id="panel-def"></div>
+    <div class="panel-def"  id="panel-def"></div>
     <button class="mastered-btn" id="mastered-btn" onclick="toggleMastered()"></button>
     <a class="explore-btn" id="explore-btn" href="#">探索此词的联想 →</a>
+    <hr class="panel-divider">
+    <button class="btn-sm-gray" onclick="toggleConnectForm()" id="connect-toggle">+ 建立关联</button>
+    <div class="connect-form" id="connect-form">
+      <label>连接到</label>
+      <select id="connect-target"></select>
+      <label>关系类型</label>
+      <select id="connect-type">
+        <option value="synonym">synonym — 近义词</option>
+        <option value="antonym">antonym — 反义词</option>
+        <option value="collocation">collocation — 搭配</option>
+        <option value="hypernym">hypernym — 上位词</option>
+        <option value="hyponym">hyponym — 下位词</option>
+        <option value="related">related — 相关</option>
+      </select>
+      <div class="connect-form-actions">
+        <button class="btn-sm-gray"  onclick="toggleConnectForm()">取消</button>
+        <button class="btn-sm-green" onclick="submitConnect()">确定</button>
+      </div>
+    </div>
   </div>
 </div>
 
-<!-- Edge edit panel (floating) -->
+<!-- Hover tooltip -->
+<div class="tooltip" id="tooltip"></div>
+
+<!-- Edge floating panel -->
 <div class="edge-panel" id="edge-panel">
-  <div class="edge-panel-title">修改关联类型</div>
+  <div class="edge-panel-title">边 · 关联类型</div>
   <div class="edge-panel-label" id="edge-panel-label"></div>
   <select id="edge-type-select">
     <option value="synonym">synonym — 近义词</option>
     <option value="antonym">antonym — 反义词</option>
-    <option value="collocation">collocation — 常用搭配</option>
+    <option value="collocation">collocation — 搭配</option>
     <option value="hypernym">hypernym — 上位词</option>
     <option value="hyponym">hyponym — 下位词</option>
     <option value="related">related — 相关</option>
   </select>
   <div class="edge-panel-actions">
-    <button class="btn-save" onclick="saveEdgeType()">保存</button>
+    <button class="btn-save"   onclick="saveEdgeType()">保存</button>
     <button class="btn-cancel" onclick="closeEdgePanel()">取消</button>
   </div>
+  <button class="btn-delete-edge" onclick="deleteEdge()">删除此关联</button>
 </div>
 
 <!-- Add word modal -->
-<div class="modal-overlay" id="modal" onclick="onModalOverlayClick(event)">
+<div class="modal-overlay" id="add-word-modal" onclick="onOverlayClick(event,'add-word-modal')">
   <div class="modal-box">
     <div class="modal-title">添加词汇</div>
     <div class="form-group">
       <label>英文单词 *</label>
-      <input id="new-word" placeholder="如：euphoric" />
+      <input id="aw-word" placeholder="如：euphoric" />
     </div>
     <div class="form-group">
       <label>中文释义（含词性）</label>
-      <input id="new-def" placeholder="如：adj. 极度兴奋的；欣喜若狂的" />
+      <input id="aw-def" placeholder="如：adj. 极度兴奋的" />
     </div>
     <div class="form-group">
-      <label>连接到（已有词汇）*</label>
-      <select id="new-connect-to"></select>
+      <label>连接到已有词汇 *</label>
+      <select id="aw-connect"></select>
     </div>
     <div class="form-group">
-      <label>与连接词的关系</label>
-      <select id="new-relation">
+      <label>关系类型</label>
+      <select id="aw-type">
         <option value="synonym">synonym — 近义词</option>
         <option value="antonym">antonym — 反义词</option>
-        <option value="collocation">collocation — 常用搭配</option>
+        <option value="collocation">collocation — 搭配</option>
         <option value="hypernym">hypernym — 上位词</option>
         <option value="hyponym">hyponym — 下位词</option>
         <option value="related">related — 相关</option>
       </select>
     </div>
-    <div class="modal-error" id="modal-error"></div>
+    <div class="modal-error" id="aw-error"></div>
     <div class="modal-actions">
-      <button class="modal-cancel" onclick="closeModal()">取消</button>
-      <button class="modal-submit" id="modal-submit" onclick="addWord()">添加</button>
+      <button class="modal-cancel" onclick="closeModal('add-word-modal')">取消</button>
+      <button class="modal-submit" id="aw-submit" onclick="submitAddWord()">添加</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add edge modal -->
+<div class="modal-overlay" id="add-edge-modal" onclick="onOverlayClick(event,'add-edge-modal')">
+  <div class="modal-box">
+    <div class="modal-title">建立关联</div>
+    <div class="form-group">
+      <label>从</label>
+      <select id="ae-from"></select>
+    </div>
+    <div class="form-group">
+      <label>到</label>
+      <select id="ae-to"></select>
+    </div>
+    <div class="form-group">
+      <label>关系类型</label>
+      <select id="ae-type">
+        <option value="synonym">synonym — 近义词</option>
+        <option value="antonym">antonym — 反义词</option>
+        <option value="collocation">collocation — 搭配</option>
+        <option value="hypernym">hypernym — 上位词</option>
+        <option value="hyponym">hyponym — 下位词</option>
+        <option value="related">related — 相关</option>
+      </select>
+    </div>
+    <div class="modal-error" id="ae-error"></div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeModal('add-edge-modal')">取消</button>
+      <button class="modal-submit" id="ae-submit" onclick="submitAddEdge()">建立</button>
     </div>
   </div>
 </div>
@@ -251,7 +283,7 @@
   <div class="legend-item"><div class="legend-dot" style="background:#1565C0"></div>探索过的词根</div>
   <div class="legend-item"><div class="legend-dot" style="background:#4CAF50"></div>关联词</div>
   <div class="legend-item"><div class="legend-dot" style="background:#B0BEC5"></div>已掌握</div>
-  <div class="legend-title" style="margin-top:8px;">边类型（点击可修改）</div>
+  <div class="legend-title" style="margin-top:8px;">边（点击可修改/删除）</div>
   <div class="legend-item"><div class="legend-line" style="background:#4A90D9"></div>synonym</div>
   <div class="legend-item"><div class="legend-line" style="background:#E74C3C"></div>antonym</div>
   <div class="legend-item"><div class="legend-line" style="background:#F39C12"></div>collocation</div>
@@ -261,14 +293,16 @@
 
 <script>
 const TYPE_COLORS = {
-  synonym: '#4A90D9', antonym: '#E74C3C', collocation: '#F39C12',
-  hypernym: '#9B59B6', hyponym: '#27AE60', related: '#95A5A6'
+  synonym:'#4A90D9', antonym:'#E74C3C', collocation:'#F39C12',
+  hypernym:'#9B59B6', hyponym:'#27AE60', related:'#95A5A6'
 };
-const RELATION_TYPES = ["synonym","antonym","collocation","hypernym","hyponym","related"];
 
 function getToken() { return localStorage.getItem("wg_token"); }
 function authFetch(url, opts = {}) {
-  return fetch(url, { ...opts, headers: { "Authorization": `Bearer ${getToken()}`, "Content-Type": "application/json", ...(opts.headers || {}) } });
+  return fetch(url, {
+    ...opts,
+    headers: { "Authorization": `Bearer ${getToken()}`, "Content-Type": "application/json", ...(opts.headers || {}) }
+  });
 }
 function logout() { localStorage.clear(); window.location.href = "/login.html"; }
 
@@ -278,9 +312,9 @@ document.getElementById("username-label").textContent = localStorage.getItem("wg
 let cy = null;
 let panelWord = null;
 let panelMastered = 0;
-let currentEdge = null; // {from_word, to_word, type}
+let currentEdge = null;
 
-// ───── Graph load ─────
+// ─── Graph load ───
 async function load() {
   document.getElementById("status").textContent = "加载中...";
   const res = await authFetch("/user/graph-data");
@@ -288,7 +322,7 @@ async function load() {
   const { elements } = await res.json();
 
   const nodeCount = elements.filter(e => !e.data.source).length;
-  const edgeCount = elements.filter(e => e.data.source).length;
+  const edgeCount = elements.filter(e =>  e.data.source).length;
 
   if (nodeCount === 0) {
     document.getElementById("status").textContent = "";
@@ -311,16 +345,10 @@ async function load() {
       {
         selector: "node",
         style: {
-          label: "data(id)",
-          "background-color": "#4CAF50",
-          color: "white",
-          "text-valign": "center",
-          "text-halign": "center",
-          "font-size": "12px",
-          "font-weight": "bold",
-          width: 65, height: 65,
-          "text-wrap": "wrap",
-          "text-max-width": "58px"
+          label: "data(id)", "background-color": "#4CAF50", color: "white",
+          "text-valign": "center", "text-halign": "center",
+          "font-size": "12px", "font-weight": "bold",
+          width: 65, height: 65, "text-wrap": "wrap", "text-max-width": "58px"
         }
       },
       { selector: "node[isRoot = 1]", style: { "background-color": "#1565C0", width: 85, height: 85, "font-size": "14px" } },
@@ -331,8 +359,7 @@ async function load() {
           width: 2, "line-color": "#95A5A6",
           label: "data(type)", "font-size": "9px", color: "#888",
           "text-rotation": "autorotate", "text-margin-y": -7,
-          "text-background-color": "white", "text-background-opacity": 0.7, "text-background-padding": "2px",
-          "cursor": "pointer"
+          "text-background-color": "white", "text-background-opacity": 0.7, "text-background-padding": "2px"
         }
       },
       ...edgeStyles
@@ -340,26 +367,41 @@ async function load() {
     layout: { name: "cose", padding: 50, nodeRepulsion: 6000, animate: false }
   });
 
-  cy.on("tap", "node", (e) => {
+  // Hover tooltip
+  const tooltip = document.getElementById("tooltip");
+  cy.on("mouseover", "node", e => {
+    const d = e.target.data();
+    tooltip.innerHTML = `<strong>${d.id}</strong>${d.definition ? "<br>" + d.definition : ""}`;
+    tooltip.style.display = "block";
+  });
+  cy.on("mousemove", e => {
+    tooltip.style.left = (e.originalEvent.clientX + 14) + "px";
+    tooltip.style.top  = (e.originalEvent.clientY + 14) + "px";
+  });
+  cy.on("mouseout", "node", () => { tooltip.style.display = "none"; });
+
+  // Node tap → info panel
+  cy.on("tap", "node", e => {
+    tooltip.style.display = "none";
     closeEdgePanel();
     const d = e.target.data();
     openPanel(d.id, d.definition, d.mastered);
   });
-  cy.on("tap", "edge", (e) => {
+
+  // Edge tap → edge panel
+  cy.on("tap", "edge", e => {
     closePanel();
     const d = e.target.data();
-    const pos = e.renderedPosition || e.position;
     openEdgePanel(d.source, d.target, d.type, e.originalEvent);
   });
-  cy.on("tap", (e) => {
+
+  // Tap canvas → close everything
+  cy.on("tap", e => {
     if (e.target === cy) { closePanel(); closeEdgePanel(); }
   });
-
-  // Populate "connect to" dropdown in modal
-  populateConnectTo();
 }
 
-// ───── Node panel ─────
+// ─── Node panel ───
 function openPanel(word, definition, mastered) {
   panelWord = word;
   panelMastered = mastered || 0;
@@ -369,6 +411,9 @@ function openPanel(word, definition, mastered) {
   defEl.className = "panel-def" + (definition ? "" : " empty");
   document.getElementById("explore-btn").href = `/?word=${encodeURIComponent(word)}`;
   updateMasteredBtn();
+  // Reset connect form
+  document.getElementById("connect-form").classList.remove("open");
+  populateSelect("connect-target", null, word);
   document.getElementById("info-panel").classList.add("open");
   document.getElementById("legend").classList.add("panel-open");
 }
@@ -384,21 +429,41 @@ function updateMasteredBtn() {
 async function toggleMastered() {
   panelMastered = panelMastered ? 0 : 1;
   updateMasteredBtn();
-  await authFetch("/user/progress", {
-    method: "POST",
-    body: JSON.stringify({ word: panelWord, mastered: panelMastered })
-  });
+  await authFetch("/user/progress", { method: "POST", body: JSON.stringify({ word: panelWord, mastered: panelMastered }) });
   if (cy) cy.getElementById(panelWord).data("mastered", panelMastered);
 }
 
-// ───── Edge panel ─────
+// ─── Connect form (inside panel) ───
+function toggleConnectForm() {
+  const form = document.getElementById("connect-form");
+  form.classList.toggle("open");
+}
+async function submitConnect() {
+  const to   = document.getElementById("connect-target").value;
+  const type = document.getElementById("connect-type").value;
+  if (!panelWord || !to) return;
+  await authFetch("/user/add-edge", { method: "POST", body: JSON.stringify({ from_word: panelWord, to_word: to, relation_type: type }) });
+  if (cy) {
+    const edgeId = `${panelWord}-${to}`;
+    if (!cy.getElementById(edgeId).length) {
+      cy.add({ data: { id: edgeId, source: panelWord, target: to, type } });
+    }
+    updateStatus();
+  }
+  document.getElementById("connect-form").classList.remove("open");
+}
+
+// ─── Edge panel ───
 function openEdgePanel(fromWord, toWord, currentType, mouseEvent) {
   currentEdge = { from_word: fromWord, to_word: toWord };
   document.getElementById("edge-panel-label").textContent = `${fromWord}  →  ${toWord}`;
   document.getElementById("edge-type-select").value = currentType || "related";
   const panel = document.getElementById("edge-panel");
-  panel.style.left = (mouseEvent.clientX + 10) + "px";
-  panel.style.top  = (mouseEvent.clientY - 20) + "px";
+  // Keep panel inside viewport
+  const x = Math.min(mouseEvent.clientX + 10, window.innerWidth  - 240);
+  const y = Math.min(mouseEvent.clientY - 20,  window.innerHeight - 200);
+  panel.style.left = x + "px";
+  panel.style.top  = y + "px";
   panel.classList.add("open");
 }
 function closeEdgePanel() {
@@ -408,85 +473,103 @@ function closeEdgePanel() {
 async function saveEdgeType() {
   if (!currentEdge) return;
   const type = document.getElementById("edge-type-select").value;
-  await authFetch("/edges", {
-    method: "PUT",
-    body: JSON.stringify({ ...currentEdge, relation_type: type })
-  });
-  // Update edge in graph
+  await authFetch("/edges", { method: "PUT", body: JSON.stringify({ ...currentEdge, relation_type: type }) });
   if (cy) {
-    const edgeId = `${currentEdge.from_word}-${currentEdge.to_word}`;
-    const edge = cy.getElementById(edgeId);
-    if (edge) edge.data("type", type);
+    const edge = cy.getElementById(`${currentEdge.from_word}-${currentEdge.to_word}`);
+    if (edge.length) edge.data("type", type);
+  }
+  closeEdgePanel();
+}
+async function deleteEdge() {
+  if (!currentEdge) return;
+  const { from_word, to_word } = currentEdge;
+  await authFetch(`/edges?from_word=${encodeURIComponent(from_word)}&to_word=${encodeURIComponent(to_word)}`, { method: "DELETE" });
+  if (cy) {
+    cy.getElementById(`${from_word}-${to_word}`).remove();
+    cy.getElementById(`${to_word}-${from_word}`).remove();
+    updateStatus();
   }
   closeEdgePanel();
 }
 
-// ───── Add word modal ─────
-function populateConnectTo() {
-  if (!cy) return;
-  const select = document.getElementById("new-connect-to");
-  const words = cy.nodes().map(n => n.data("id")).sort();
-  select.innerHTML = words.map(w => `<option value="${w}">${w}</option>`).join("");
+// ─── Add word modal ───
+function openAddWordModal() {
+  document.getElementById("aw-word").value = "";
+  document.getElementById("aw-def").value  = "";
+  document.getElementById("aw-error").textContent = "";
+  populateSelect("aw-connect");
+  document.getElementById("add-word-modal").classList.add("open");
 }
-function openModal() {
-  document.getElementById("new-word").value = "";
-  document.getElementById("new-def").value = "";
-  document.getElementById("new-relation").value = "related";
-  document.getElementById("modal-error").textContent = "";
-  populateConnectTo();
-  document.getElementById("modal").classList.add("open");
-}
-function closeModal() {
-  document.getElementById("modal").classList.remove("open");
-}
-function onModalOverlayClick(e) {
-  if (e.target === document.getElementById("modal")) closeModal();
-}
-async function addWord() {
-  const word       = document.getElementById("new-word").value.trim();
-  const definition = document.getElementById("new-def").value.trim();
-  const connect_to = document.getElementById("new-connect-to").value;
-  const relation_type = document.getElementById("new-relation").value;
-  const errEl = document.getElementById("modal-error");
-  const btn   = document.getElementById("modal-submit");
-
-  if (!word) { errEl.textContent = "请输入单词"; return; }
+async function submitAddWord() {
+  const word       = document.getElementById("aw-word").value.trim();
+  const definition = document.getElementById("aw-def").value.trim();
+  const connect_to = document.getElementById("aw-connect").value;
+  const type       = document.getElementById("aw-type").value;
+  const errEl      = document.getElementById("aw-error");
+  const btn        = document.getElementById("aw-submit");
+  if (!word)       { errEl.textContent = "请输入单词"; return; }
   if (!connect_to) { errEl.textContent = "请选择连接词"; return; }
-
-  btn.disabled = true;
-  errEl.textContent = "";
-
-  const res = await authFetch("/user/add-word", {
-    method: "POST",
-    body: JSON.stringify({ word, definition, connect_to, relation_type })
-  });
+  btn.disabled = true; errEl.textContent = "";
+  const res = await authFetch("/user/add-word", { method: "POST", body: JSON.stringify({ word, definition, connect_to, relation_type: type }) });
   btn.disabled = false;
-
-  if (!res.ok) {
-    const d = await res.json();
-    errEl.textContent = d.error || "添加失败";
-    return;
-  }
-
-  // Add node and edge to current graph without full reload
+  if (!res.ok) { const d = await res.json(); errEl.textContent = d.error || "添加失败"; return; }
   if (cy) {
     if (!cy.getElementById(word).length) {
       cy.add({ data: { id: word, definition: definition || null, mastered: 0, isRoot: 1 } });
     }
     const edgeId = `${connect_to}-${word}`;
     if (!cy.getElementById(edgeId).length) {
-      cy.add({ data: { id: edgeId, source: connect_to, target: word, type: relation_type } });
+      cy.add({ data: { id: edgeId, source: connect_to, target: word, type } });
     }
     cy.layout({ name: "cose", padding: 50, nodeRepulsion: 6000, animate: true }).run();
-    // Update status
-    const nodeCount = cy.nodes().length;
-    const edgeCount = cy.edges().length;
-    document.getElementById("status").textContent = `${nodeCount} 个词  ${edgeCount} 条关联`;
-    populateConnectTo();
+    updateStatus();
   }
-
-  closeModal();
+  closeModal("add-word-modal");
 }
+
+// ─── Add edge modal ───
+function openAddEdgeModal() {
+  document.getElementById("ae-error").textContent = "";
+  populateSelect("ae-from");
+  populateSelect("ae-to");
+  document.getElementById("add-edge-modal").classList.add("open");
+}
+async function submitAddEdge() {
+  const from_word = document.getElementById("ae-from").value;
+  const to_word   = document.getElementById("ae-to").value;
+  const type      = document.getElementById("ae-type").value;
+  const errEl     = document.getElementById("ae-error");
+  const btn       = document.getElementById("ae-submit");
+  if (from_word === to_word) { errEl.textContent = "不能连接同一个词"; return; }
+  btn.disabled = true; errEl.textContent = "";
+  const res = await authFetch("/user/add-edge", { method: "POST", body: JSON.stringify({ from_word, to_word, relation_type: type }) });
+  btn.disabled = false;
+  if (!res.ok) { const d = await res.json(); errEl.textContent = d.error || "建立失败"; return; }
+  if (cy) {
+    const edgeId = `${from_word}-${to_word}`;
+    if (!cy.getElementById(edgeId).length) {
+      cy.add({ data: { id: edgeId, source: from_word, target: to_word, type } });
+    }
+    updateStatus();
+  }
+  closeModal("add-edge-modal");
+}
+
+// ─── Helpers ───
+function populateSelect(selectId, excludeWord = null, skipWord = null) {
+  if (!cy) return;
+  const sel = document.getElementById(selectId);
+  const words = cy.nodes().map(n => n.data("id")).sort()
+    .filter(w => w !== excludeWord && w !== skipWord);
+  sel.innerHTML = words.map(w => `<option value="${w}">${w}</option>`).join("");
+}
+function updateStatus() {
+  if (!cy) return;
+  document.getElementById("status").textContent =
+    `${cy.nodes().length} 个词  ${cy.edges().length} 条关联`;
+}
+function closeModal(id) { document.getElementById(id).classList.remove("open"); }
+function onOverlayClick(e, id) { if (e.target.id === id) closeModal(id); }
 
 load();
 </script>

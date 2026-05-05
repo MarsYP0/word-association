@@ -64,6 +64,16 @@ CREATE TABLE IF NOT EXISTS user_word_progress (
 `);
 
 db.exec(`
+CREATE TABLE IF NOT EXISTS user_excluded_edges (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER,
+  from_word TEXT,
+  to_word TEXT,
+  UNIQUE(user_id, from_word, to_word)
+);
+`);
+
+db.exec(`
 CREATE TABLE IF NOT EXISTS user_excluded_words (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER,
