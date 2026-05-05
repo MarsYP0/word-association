@@ -1,44 +1,209 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Word Graph</title>
+  <title>Word Association Graph</title>
   <script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f0f2f5; }
+
+    .header {
+      padding: 14px 20px;
+      background: white;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .header h1 { font-size: 16px; color: #333; margin-right: 10px; }
+    .header input {
+      padding: 8px 14px;
+      border: 1px solid #d0d0d0;
+      border-radius: 20px;
+      font-size: 15px;
+      width: 220px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .header input:focus { border-color: #4CAF50; }
+    .header button {
+      padding: 8px 20px;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 15px;
+      transition: background 0.2s;
+    }
+    .header button:hover { background: #43a047; }
+    .header button:disabled { background: #aaa; cursor: not-allowed; }
+    #status { font-size: 13px; color: #888; }
+
+    #graph { width: 100%; height: calc(100vh - 57px); }
+
+    .tooltip {
+      position: fixed;
+      background: rgba(30, 30, 30, 0.88);
+      color: white;
+      padding: 8px 13px;
+      border-radius: 8px;
+      font-size: 13px;
+      pointer-events: none;
+      display: none;
+      max-width: 260px;
+      z-index: 100;
+      line-height: 1.5;
+    }
+
+    .legend {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .legend-title { font-weight: 600; color: #333; margin-bottom: 8px; }
+    .legend-item { display: flex; align-items: center; gap: 8px; margin: 5px 0; color: #555; }
+    .legend-line { width: 28px; height: 3px; border-radius: 2px; flex-shrink: 0; }
+  </style>
 </head>
 <body>
 
-<input id="word" placeholder="enter word" />
-<button onclick="loadGraph()">Generate</button>
+<div class="header">
+  <h1>Word Graph</h1>
+  <input id="word" placeholder="Enter a word..." onkeydown="if(event.key==='Enter') loadGraph()" />
+  <button id="btn" onclick="loadGraph()">Generate</button>
+  <span id="status"></span>
+</div>
 
-<div id="graph" style="width:100%; height:600px;"></div>
+<div id="graph"></div>
+<div class="tooltip" id="tooltip"></div>
+
+<div class="legend">
+  <div class="legend-title">Edge Types</div>
+  <div class="legend-item"><div class="legend-line" style="background:#4A90D9"></div>synonym 近义词</div>
+  <div class="legend-item"><div class="legend-line" style="background:#E74C3C"></div>antonym 反义词</div>
+  <div class="legend-item"><div class="legend-line" style="background:#F39C12"></div>collocation 搭配</div>
+  <div class="legend-item"><div class="legend-line" style="background:#9B59B6"></div>hypernym 上位词</div>
+  <div class="legend-item"><div class="legend-line" style="background:#27AE60"></div>hyponym 下位词</div>
+  <div class="legend-item"><div class="legend-line" style="background:#95A5A6"></div>related 相关</div>
+</div>
 
 <script>
+const TYPE_COLORS = {
+  synonym:     '#4A90D9',
+  antonym:     '#E74C3C',
+  collocation: '#F39C12',
+  hypernym:    '#9B59B6',
+  hyponym:     '#27AE60',
+  related:     '#95A5A6'
+};
+
+let cy = null;
+
 async function loadGraph() {
-  const word = document.getElementById("word").value;
+  const word = document.getElementById("word").value.trim();
+  if (!word) return;
 
-  const res = await fetch(`http://localhost:3000/graph?text=${word}`);
-  const data = await res.json();
+  const btn = document.getElementById("btn");
+  const status = document.getElementById("status");
+  btn.disabled = true;
+  status.textContent = "Generating...";
 
-  cytoscape({
-    container: document.getElementById("graph"),
-    elements: data.elements,
-    style: [
-      {
-        selector: "node",
-        style: {
-          label: "data(id)",
-          "background-color": "#4CAF50"
-        }
-      },
-      {
-        selector: "edge",
-        style: {
-          width: 2,
-          "line-color": "#ccc"
-        }
+  try {
+    const res = await fetch(`http://localhost:3000/graph?text=${encodeURIComponent(word)}`);
+    const data = await res.json();
+
+    const edgeCount = data.elements.filter(e => e.data.source).length;
+    status.textContent = `${edgeCount} associations`;
+
+    if (cy) cy.destroy();
+
+    const edgeStyles = Object.entries(TYPE_COLORS).map(([type, color]) => ({
+      selector: `edge[type = "${type}"]`,
+      style: { "line-color": color, "target-arrow-color": color }
+    }));
+
+    cy = cytoscape({
+      container: document.getElementById("graph"),
+      elements: data.elements,
+      style: [
+        {
+          selector: "node",
+          style: {
+            label: "data(id)",
+            "background-color": "#4CAF50",
+            color: "white",
+            "text-valign": "center",
+            "text-halign": "center",
+            "font-size": "13px",
+            "font-weight": "bold",
+            width: 75,
+            height: 75,
+            "text-wrap": "wrap",
+            "text-max-width": "65px"
+          }
+        },
+        {
+          selector: `node[id = "${word}"]`,
+          style: {
+            "background-color": "#1565C0",
+            width: 95,
+            height: 95,
+            "font-size": "15px"
+          }
+        },
+        {
+          selector: "edge",
+          style: {
+            width: 2.5,
+            "line-color": "#95A5A6",
+            label: "data(type)",
+            "font-size": "10px",
+            color: "#666",
+            "text-rotation": "autorotate",
+            "text-margin-y": -8,
+            "text-background-color": "white",
+            "text-background-opacity": 0.7,
+            "text-background-padding": "2px"
+          }
+        },
+        ...edgeStyles
+      ],
+      layout: { name: "cose", padding: 60, nodeRepulsion: 8000 }
+    });
+
+    const tooltip = document.getElementById("tooltip");
+
+    cy.on("mouseover", "node", (e) => {
+      const def = e.target.data("definition");
+      const id = e.target.data("id");
+      if (def) {
+        tooltip.innerHTML = `<strong>${id}</strong><br>${def}`;
+        tooltip.style.display = "block";
       }
-    ],
-    layout: { name: "cose" }
-  });
+    });
+
+    cy.on("mousemove", (e) => {
+      tooltip.style.left = (e.originalEvent.clientX + 14) + "px";
+      tooltip.style.top  = (e.originalEvent.clientY + 14) + "px";
+    });
+
+    cy.on("mouseout", "node", () => {
+      tooltip.style.display = "none";
+    });
+
+  } catch (err) {
+    status.textContent = "Error: " + err.message;
+  } finally {
+    btn.disabled = false;
+  }
 }
 </script>
 

@@ -25,14 +25,14 @@ app.get("/word", async (req, res) => {
 // =========================
 // 图结构接口（前端用）
 // =========================
-app.get("/graph", (req, res) => {
+app.get("/graph", async (req, res) => {
   const word = req.query.text;
+  if (!word) return res.status(400).json({ error: "text required" });
 
+  await getWordGraph(word);
   const graph = getGraph(word);
 
-  res.json({
-    elements: graph
-  });
+  res.json({ elements: graph });
 });
 
 app.listen(3000, () => {

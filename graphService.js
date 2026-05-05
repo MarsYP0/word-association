@@ -1,83 +1,60 @@
 const db = require("./db");
 const { generateAssociations } = require("./ai");
 
-// 存节点
-function saveNode(word) {
+function saveNode(word, definition = null) {
   db.prepare(`
-    INSERT OR IGNORE INTO nodes (word)
-    VALUES (?)
-  `).run(word);
+    INSERT INTO nodes (word, definition) VALUES (?, ?)
+    ON CONFLICT(word) DO UPDATE SET definition = COALESCE(excluded.definition, definition)
+  `).run(word, definition);
 }
 
-// 存边
-function saveEdge(from, to) {
-  db.prepare(`
-    INSERT INTO edges (from_word, to_word)
-    VALUES (?, ?)
-  `).run(from, to);
-
-  // 👉 反向索引
-  db.prepare(`
-    INSERT INTO reverse_edges (from_word, to_word)
-    VALUES (?, ?)
-  `).run(to, from);
+function saveEdge(from, to, type = null) {
+  db.prepare(`INSERT INTO edges (from_word, to_word, relation_type) VALUES (?, ?, ?)`).run(from, to, type);
+  db.prepare(`INSERT INTO reverse_edges (from_word, to_word, relation_type) VALUES (?, ?, ?)`).run(to, from, type);
 }
 
-// 查邻居
-function getNeighbors(word) {
-  const forward = db.prepare(`
-    SELECT to_word FROM edges WHERE from_word = ?
-  `).all(word);
-
-  const reverse = db.prepare(`
-    SELECT to_word FROM reverse_edges WHERE from_word = ?
-  `).all(word);
-
-  return [...forward, ...reverse];
-}
-
-// 主逻辑：获取词 + AI + 存图
 async function getWordGraph(word) {
   saveNode(word);
 
-  const edges = getNeighbors(word);
+  const existing = db.prepare(`SELECT to_word FROM edges WHERE from_word = ?`).all(word);
 
-  // ❗ 只有完全没有关系才调用AI
-  if (edges.length < 5) {
-    const associations = await generateAssociations(word);
+  if (existing.length < 5) {
+    const result = await generateAssociations(word);
+    const { definition, associations } = result;
 
-    for (const w of associations) {
+    db.prepare(`UPDATE nodes SET definition = ? WHERE word = ?`).run(definition, word);
+
+    for (const { word: w, type } of associations) {
       saveNode(w);
-      saveEdge(word, w);
+      saveEdge(word, w, type);
     }
 
-    return {
-      word,
-      from: "ai",
-      associations
-    };
+    return { word, from: "ai", associations: associations.map(a => a.word) };
   }
 
-  return {
-    word,
-    from: "cache",
-    associations: edges.map(e => e.to_word)
-  };
+  return { word, from: "cache", associations: existing.map(e => e.to_word) };
 }
 
-// 图结构（给前端）
 function getGraph(word) {
-  const edges = getNeighbors(word);
+  const edges = db.prepare(`SELECT to_word, relation_type FROM edges WHERE from_word = ?`).all(word);
+  const wordRow = db.prepare(`SELECT definition FROM nodes WHERE word = ?`).get(word);
 
-  const nodes = [{ data: { id: word } }];
+  const nodes = [{ data: { id: word, definition: wordRow?.definition || null } }];
   const edgeList = [];
+  const seen = new Set([word]);
 
   for (const e of edges) {
-    nodes.push({ data: { id: e.to_word } });
+    if (!seen.has(e.to_word)) {
+      seen.add(e.to_word);
+      const row = db.prepare(`SELECT definition FROM nodes WHERE word = ?`).get(e.to_word);
+      nodes.push({ data: { id: e.to_word, definition: row?.definition || null } });
+    }
     edgeList.push({
       data: {
+        id: `${word}-${e.to_word}`,
         source: word,
-        target: e.to_word
+        target: e.to_word,
+        type: e.relation_type || "related"
       }
     });
   }
@@ -85,7 +62,4 @@ function getGraph(word) {
   return [...nodes, ...edgeList];
 }
 
-module.exports = {
-  getWordGraph,
-  getGraph
-};
+module.exports = { getWordGraph, getGraph };

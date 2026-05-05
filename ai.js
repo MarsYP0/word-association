@@ -1,20 +1,24 @@
 const axios = require("axios");
 
 async function generateAssociations(word) {
-  const prompt = `
-给单词 "${word}" 生成5个生活中最自然联想词。
-要求：
-- 常见词
-- 简单
-- 英文
-- 用逗号分隔
-`;
+  const prompt = `For the English word "${word}", return ONLY a JSON object (no markdown, no extra text):
+{
+  "definition": "中文释义（含词性，如：n. 苹果；v. 奔跑）",
+  "associations": [
+    {"word": "english_word", "type": "synonym"}
+  ]
+}
+Rules:
+- definition: concise Chinese explanation with part of speech
+- associations: exactly 5 items using common English words
+- type must be one of: synonym(近义词), antonym(反义词), collocation(常用搭配), hypernym(上位词), hyponym(下位词)`;
 
   const res = await axios.post(
     "https://api.openai.com/v1/chat/completions",
     {
       model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }]
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" }
     },
     {
       headers: {
@@ -23,10 +27,7 @@ async function generateAssociations(word) {
     }
   );
 
-  return res.data.choices[0].message.content
-    .split(",")
-    .map(s => s.trim())
-    .filter(Boolean);
+  return JSON.parse(res.data.choices[0].message.content);
 }
 
 module.exports = { generateAssociations };
