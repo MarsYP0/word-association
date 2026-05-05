@@ -120,7 +120,8 @@
   <button id="btn" onclick="loadGraph()">Generate</button>
   <span id="status"></span>
   <div class="nav-links">
-    <a href="/dashboard.html">我的图谱</a>
+    <a href="/mygraph.html">我的图谱</a>
+    <a href="/dashboard.html">我的词汇</a>
     <a href="/review.html">复习单词</a>
     <span class="username" id="username-label"></span>
     <button class="logout-btn" onclick="logout()">退出</button>
@@ -173,7 +174,7 @@ let panelMastered = 0;
 const urlWord = new URLSearchParams(location.search).get("word");
 if (urlWord) {
   document.getElementById("word").value = urlWord;
-  window.addEventListener("load", loadGraph);
+  window.addEventListener("load", () => loadGraph());
 }
 
 async function loadGraph(targetWord) {

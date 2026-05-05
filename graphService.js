@@ -28,8 +28,8 @@ async function getWordGraph(word) {
 
     db.prepare(`UPDATE nodes SET definition = ? WHERE word = ?`).run(definition, word);
 
-    for (const { word: w, type } of associations) {
-      saveNode(w);
+    for (const { word: w, type, definition: wDef } of associations) {
+      saveNode(w, wDef || null);
       saveEdge(word, w, type);
     }
 

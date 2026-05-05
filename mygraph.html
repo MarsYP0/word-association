@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Word Graph — 我的图谱</title>
+  <meta charset="utf-8">
+  <script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f0f2f5; display: flex; flex-direction: column; height: 100vh; }
+
+    .header {
+      padding: 0 20px;
+      height: 54px;
+      background: white;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-shrink: 0;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .brand { font-size: 16px; font-weight: 700; color: #333; text-decoration: none; }
+    .nav-links { display: flex; gap: 16px; flex: 1; }
+    .nav-links a { font-size: 13px; color: #555; text-decoration: none; }
+    .nav-links a:hover { color: #4CAF50; }
+    .nav-links a.active { color: #4CAF50; font-weight: 600; }
+    #status { font-size: 13px; color: #888; }
+    .add-word-btn {
+      padding: 7px 16px;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 16px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .add-word-btn:hover { background: #43a047; }
+    .username { font-size: 13px; color: #333; font-weight: 600; }
+    .logout-btn { font-size: 13px; color: #888; cursor: pointer; background: none; border: none; }
+    .logout-btn:hover { color: #E74C3C; }
+
+    .main { display: flex; flex: 1; overflow: hidden; }
+    #graph { flex: 1; position: relative; }
+
+    /* Node info panel */
+    .info-panel {
+      width: 260px;
+      background: white;
+      border-left: 1px solid #e0e0e0;
+      padding: 20px;
+      display: none;
+      flex-direction: column;
+      gap: 14px;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+    .info-panel.open { display: flex; }
+    .panel-close { align-self: flex-end; cursor: pointer; color: #aaa; font-size: 18px; background: none; border: none; }
+    .panel-close:hover { color: #333; }
+    .panel-word { font-size: 26px; font-weight: 700; color: #1565C0; }
+    .panel-def { font-size: 14px; color: #555; line-height: 1.6; }
+    .panel-def.empty { color: #bbb; font-style: italic; }
+    .mastered-btn {
+      padding: 10px; border-radius: 8px; border: none; cursor: pointer;
+      font-size: 14px; font-weight: 600; transition: all 0.2s;
+    }
+    .mastered-btn.not-mastered { background: #e8f5e9; color: #388e3c; }
+    .mastered-btn.not-mastered:hover { background: #c8e6c9; }
+    .mastered-btn.mastered { background: #f5f5f5; color: #888; }
+    .mastered-btn.mastered:hover { background: #ffebee; color: #c62828; }
+    .explore-btn {
+      padding: 9px; border-radius: 8px; border: 1px solid #d0d0d0;
+      background: white; cursor: pointer; font-size: 13px; color: #555;
+      text-decoration: none; display: block; text-align: center;
+    }
+    .explore-btn:hover { border-color: #4CAF50; color: #4CAF50; }
+
+    /* Edge edit panel */
+    .edge-panel {
+      position: fixed;
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 200;
+      min-width: 220px;
+    }
+    .edge-panel.open { display: flex; }
+    .edge-panel-title { font-size: 13px; font-weight: 600; color: #333; }
+    .edge-panel-label { font-size: 12px; color: #888; }
+    .edge-panel select {
+      padding: 7px 10px;
+      border: 1px solid #d0d0d0;
+      border-radius: 8px;
+      font-size: 13px;
+      outline: none;
+    }
+    .edge-panel-actions { display: flex; gap: 8px; }
+    .btn-save { flex: 1; padding: 8px; background: #4CAF50; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; }
+    .btn-save:hover { background: #43a047; }
+    .btn-cancel { flex: 1; padding: 8px; background: #f5f5f5; color: #555; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; }
+    .btn-cancel:hover { background: #e0e0e0; }
+
+    /* Add word modal */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.4);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 300;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: white;
+      border-radius: 16px;
+      padding: 28px;
+      width: 420px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.16);
+    }
+    .modal-title { font-size: 18px; font-weight: 700; color: #222; margin-bottom: 20px; }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 13px; color: #555; margin-bottom: 5px; }
+    .form-group input, .form-group select {
+      width: 100%; padding: 9px 12px;
+      border: 1px solid #d0d0d0; border-radius: 8px;
+      font-size: 14px; outline: none;
+    }
+    .form-group input:focus, .form-group select:focus { border-color: #4CAF50; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+    .modal-submit { flex: 1; padding: 11px; background: #4CAF50; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; }
+    .modal-submit:hover { background: #43a047; }
+    .modal-submit:disabled { background: #aaa; cursor: not-allowed; }
+    .modal-cancel { flex: 1; padding: 11px; background: #f5f5f5; color: #555; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; }
+    .modal-cancel:hover { background: #e0e0e0; }
+    .modal-error { font-size: 13px; color: #c62828; margin-top: 8px; }
+
+    /* Legend */
+    .legend {
+      position: fixed; bottom: 20px; right: 20px;
+      background: white; border: 1px solid #e0e0e0; border-radius: 10px;
+      padding: 10px 14px; font-size: 11px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    }
+    .legend.panel-open { right: 276px; }
+    .legend-title { font-weight: 600; color: #333; margin-bottom: 6px; }
+    .legend-item { display: flex; align-items: center; gap: 7px; margin: 4px 0; color: #555; }
+    .legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+    .legend-line { width: 24px; height: 3px; border-radius: 2px; flex-shrink: 0; }
+
+    .empty-state {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center; color: #aaa;
+    }
+    .empty-state a { color: #4CAF50; text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <a class="brand" href="/">Word Graph</a>
+  <div class="nav-links">
+    <a href="/">生成图谱</a>
+    <a href="/mygraph.html" class="active">我的图谱</a>
+    <a href="/dashboard.html">我的词汇</a>
+    <a href="/review.html">复习单词</a>
+  </div>
+  <span id="status"></span>
+  <button class="add-word-btn" onclick="openModal()">+ 添加词汇</button>
+  <span class="username" id="username-label"></span>
+  <button class="logout-btn" onclick="logout()">退出</button>
+</div>
+
+<div class="main">
+  <div id="graph" style="position:relative;">
+    <div class="empty-state" id="empty-state" style="display:none">
+      还没有词汇，<a href="/">去探索第一个词</a>
+    </div>
+  </div>
+
+  <!-- Node info panel -->
+  <div class="info-panel" id="info-panel">
+    <button class="panel-close" onclick="closePanel()">✕</button>
+    <div class="panel-word" id="panel-word"></div>
+    <div class="panel-def" id="panel-def"></div>
+    <button class="mastered-btn" id="mastered-btn" onclick="toggleMastered()"></button>
+    <a class="explore-btn" id="explore-btn" href="#">探索此词的联想 →</a>
+  </div>
+</div>
+
+<!-- Edge edit panel (floating) -->
+<div class="edge-panel" id="edge-panel">
+  <div class="edge-panel-title">修改关联类型</div>
+  <div class="edge-panel-label" id="edge-panel-label"></div>
+  <select id="edge-type-select">
+    <option value="synonym">synonym — 近义词</option>
+    <option value="antonym">antonym — 反义词</option>
+    <option value="collocation">collocation — 常用搭配</option>
+    <option value="hypernym">hypernym — 上位词</option>
+    <option value="hyponym">hyponym — 下位词</option>
+    <option value="related">related — 相关</option>
+  </select>
+  <div class="edge-panel-actions">
+    <button class="btn-save" onclick="saveEdgeType()">保存</button>
+    <button class="btn-cancel" onclick="closeEdgePanel()">取消</button>
+  </div>
+</div>
+
+<!-- Add word modal -->
+<div class="modal-overlay" id="modal" onclick="onModalOverlayClick(event)">
+  <div class="modal-box">
+    <div class="modal-title">添加词汇</div>
+    <div class="form-group">
+      <label>英文单词 *</label>
+      <input id="new-word" placeholder="如：euphoric" />
+    </div>
+    <div class="form-group">
+      <label>中文释义（含词性）</label>
+      <input id="new-def" placeholder="如：adj. 极度兴奋的；欣喜若狂的" />
+    </div>
+    <div class="form-group">
+      <label>连接到（已有词汇）*</label>
+      <select id="new-connect-to"></select>
+    </div>
+    <div class="form-group">
+      <label>与连接词的关系</label>
+      <select id="new-relation">
+        <option value="synonym">synonym — 近义词</option>
+        <option value="antonym">antonym — 反义词</option>
+        <option value="collocation">collocation — 常用搭配</option>
+        <option value="hypernym">hypernym — 上位词</option>
+        <option value="hyponym">hyponym — 下位词</option>
+        <option value="related">related — 相关</option>
+      </select>
+    </div>
+    <div class="modal-error" id="modal-error"></div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeModal()">取消</button>
+      <button class="modal-submit" id="modal-submit" onclick="addWord()">添加</button>
+    </div>
+  </div>
+</div>
+
+<div class="legend" id="legend">
+  <div class="legend-title">节点</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#1565C0"></div>探索过的词根</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#4CAF50"></div>关联词</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#B0BEC5"></div>已掌握</div>
+  <div class="legend-title" style="margin-top:8px;">边类型（点击可修改）</div>
+  <div class="legend-item"><div class="legend-line" style="background:#4A90D9"></div>synonym</div>
+  <div class="legend-item"><div class="legend-line" style="background:#E74C3C"></div>antonym</div>
+  <div class="legend-item"><div class="legend-line" style="background:#F39C12"></div>collocation</div>
+  <div class="legend-item"><div class="legend-line" style="background:#9B59B6"></div>hypernym</div>
+  <div class="legend-item"><div class="legend-line" style="background:#27AE60"></div>hyponym</div>
+</div>
+
+<script>
+const TYPE_COLORS = {
+  synonym: '#4A90D9', antonym: '#E74C3C', collocation: '#F39C12',
+  hypernym: '#9B59B6', hyponym: '#27AE60', related: '#95A5A6'
+};
+const RELATION_TYPES = ["synonym","antonym","collocation","hypernym","hyponym","related"];
+
+function getToken() { return localStorage.getItem("wg_token"); }
+function authFetch(url, opts = {}) {
+  return fetch(url, { ...opts, headers: { "Authorization": `Bearer ${getToken()}`, "Content-Type": "application/json", ...(opts.headers || {}) } });
+}
+function logout() { localStorage.clear(); window.location.href = "/login.html"; }
+
+if (!getToken()) window.location.href = "/login.html";
+document.getElementById("username-label").textContent = localStorage.getItem("wg_username") || "";
+
+let cy = null;
+let panelWord = null;
+let panelMastered = 0;
+let currentEdge = null; // {from_word, to_word, type}
+
+// ───── Graph load ─────
+async function load() {
+  document.getElementById("status").textContent = "加载中...";
+  const res = await authFetch("/user/graph-data");
+  if (res.status === 401) { logout(); return; }
+  const { elements } = await res.json();
+
+  const nodeCount = elements.filter(e => !e.data.source).length;
+  const edgeCount = elements.filter(e => e.data.source).length;
+
+  if (nodeCount === 0) {
+    document.getElementById("status").textContent = "";
+    document.getElementById("empty-state").style.display = "block";
+    return;
+  }
+  document.getElementById("status").textContent = `${nodeCount} 个词  ${edgeCount} 条关联`;
+
+  if (cy) cy.destroy();
+
+  const edgeStyles = Object.entries(TYPE_COLORS).map(([type, color]) => ({
+    selector: `edge[type = "${type}"]`,
+    style: { "line-color": color }
+  }));
+
+  cy = cytoscape({
+    container: document.getElementById("graph"),
+    elements,
+    style: [
+      {
+        selector: "node",
+        style: {
+          label: "data(id)",
+          "background-color": "#4CAF50",
+          color: "white",
+          "text-valign": "center",
+          "text-halign": "center",
+          "font-size": "12px",
+          "font-weight": "bold",
+          width: 65, height: 65,
+          "text-wrap": "wrap",
+          "text-max-width": "58px"
+        }
+      },
+      { selector: "node[isRoot = 1]", style: { "background-color": "#1565C0", width: 85, height: 85, "font-size": "14px" } },
+      { selector: "node[?mastered]",  style: { "background-color": "#B0BEC5", color: "#546E7A" } },
+      {
+        selector: "edge",
+        style: {
+          width: 2, "line-color": "#95A5A6",
+          label: "data(type)", "font-size": "9px", color: "#888",
+          "text-rotation": "autorotate", "text-margin-y": -7,
+          "text-background-color": "white", "text-background-opacity": 0.7, "text-background-padding": "2px",
+          "cursor": "pointer"
+        }
+      },
+      ...edgeStyles
+    ],
+    layout: { name: "cose", padding: 50, nodeRepulsion: 6000, animate: false }
+  });
+
+  cy.on("tap", "node", (e) => {
+    closeEdgePanel();
+    const d = e.target.data();
+    openPanel(d.id, d.definition, d.mastered);
+  });
+  cy.on("tap", "edge", (e) => {
+    closePanel();
+    const d = e.target.data();
+    const pos = e.renderedPosition || e.position;
+    openEdgePanel(d.source, d.target, d.type, e.originalEvent);
+  });
+  cy.on("tap", (e) => {
+    if (e.target === cy) { closePanel(); closeEdgePanel(); }
+  });
+
+  // Populate "connect to" dropdown in modal
+  populateConnectTo();
+}
+
+// ───── Node panel ─────
+function openPanel(word, definition, mastered) {
+  panelWord = word;
+  panelMastered = mastered || 0;
+  document.getElementById("panel-word").textContent = word;
+  const defEl = document.getElementById("panel-def");
+  defEl.textContent = definition || "暂无释义";
+  defEl.className = "panel-def" + (definition ? "" : " empty");
+  document.getElementById("explore-btn").href = `/?word=${encodeURIComponent(word)}`;
+  updateMasteredBtn();
+  document.getElementById("info-panel").classList.add("open");
+  document.getElementById("legend").classList.add("panel-open");
+}
+function closePanel() {
+  document.getElementById("info-panel").classList.remove("open");
+  document.getElementById("legend").classList.remove("panel-open");
+}
+function updateMasteredBtn() {
+  const btn = document.getElementById("mastered-btn");
+  btn.textContent = panelMastered ? "✓ 已掌握（点击取消）" : "标记为已掌握";
+  btn.className = "mastered-btn " + (panelMastered ? "mastered" : "not-mastered");
+}
+async function toggleMastered() {
+  panelMastered = panelMastered ? 0 : 1;
+  updateMasteredBtn();
+  await authFetch("/user/progress", {
+    method: "POST",
+    body: JSON.stringify({ word: panelWord, mastered: panelMastered })
+  });
+  if (cy) cy.getElementById(panelWord).data("mastered", panelMastered);
+}
+
+// ───── Edge panel ─────
+function openEdgePanel(fromWord, toWord, currentType, mouseEvent) {
+  currentEdge = { from_word: fromWord, to_word: toWord };
+  document.getElementById("edge-panel-label").textContent = `${fromWord}  →  ${toWord}`;
+  document.getElementById("edge-type-select").value = currentType || "related";
+  const panel = document.getElementById("edge-panel");
+  panel.style.left = (mouseEvent.clientX + 10) + "px";
+  panel.style.top  = (mouseEvent.clientY - 20) + "px";
+  panel.classList.add("open");
+}
+function closeEdgePanel() {
+  document.getElementById("edge-panel").classList.remove("open");
+  currentEdge = null;
+}
+async function saveEdgeType() {
+  if (!currentEdge) return;
+  const type = document.getElementById("edge-type-select").value;
+  await authFetch("/edges", {
+    method: "PUT",
+    body: JSON.stringify({ ...currentEdge, relation_type: type })
+  });
+  // Update edge in graph
+  if (cy) {
+    const edgeId = `${currentEdge.from_word}-${currentEdge.to_word}`;
+    const edge = cy.getElementById(edgeId);
+    if (edge) edge.data("type", type);
+  }
+  closeEdgePanel();
+}
+
+// ───── Add word modal ─────
+function populateConnectTo() {
+  if (!cy) return;
+  const select = document.getElementById("new-connect-to");
+  const words = cy.nodes().map(n => n.data("id")).sort();
+  select.innerHTML = words.map(w => `<option value="${w}">${w}</option>`).join("");
+}
+function openModal() {
+  document.getElementById("new-word").value = "";
+  document.getElementById("new-def").value = "";
+  document.getElementById("new-relation").value = "related";
+  document.getElementById("modal-error").textContent = "";
+  populateConnectTo();
+  document.getElementById("modal").classList.add("open");
+}
+function closeModal() {
+  document.getElementById("modal").classList.remove("open");
+}
+function onModalOverlayClick(e) {
+  if (e.target === document.getElementById("modal")) closeModal();
+}
+async function addWord() {
+  const word       = document.getElementById("new-word").value.trim();
+  const definition = document.getElementById("new-def").value.trim();
+  const connect_to = document.getElementById("new-connect-to").value;
+  const relation_type = document.getElementById("new-relation").value;
+  const errEl = document.getElementById("modal-error");
+  const btn   = document.getElementById("modal-submit");
+
+  if (!word) { errEl.textContent = "请输入单词"; return; }
+  if (!connect_to) { errEl.textContent = "请选择连接词"; return; }
+
+  btn.disabled = true;
+  errEl.textContent = "";
+
+  const res = await authFetch("/user/add-word", {
+    method: "POST",
+    body: JSON.stringify({ word, definition, connect_to, relation_type })
+  });
+  btn.disabled = false;
+
+  if (!res.ok) {
+    const d = await res.json();
+    errEl.textContent = d.error || "添加失败";
+    return;
+  }
+
+  // Add node and edge to current graph without full reload
+  if (cy) {
+    if (!cy.getElementById(word).length) {
+      cy.add({ data: { id: word, definition: definition || null, mastered: 0, isRoot: 1 } });
+    }
+    const edgeId = `${connect_to}-${word}`;
+    if (!cy.getElementById(edgeId).length) {
+      cy.add({ data: { id: edgeId, source: connect_to, target: word, type: relation_type } });
+    }
+    cy.layout({ name: "cose", padding: 50, nodeRepulsion: 6000, animate: true }).run();
+    // Update status
+    const nodeCount = cy.nodes().length;
+    const edgeCount = cy.edges().length;
+    document.getElementById("status").textContent = `${nodeCount} 个词  ${edgeCount} 条关联`;
+    populateConnectTo();
+  }
+
+  closeModal();
+}
+
+load();
+</script>
+
+</body>
+</html>

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Word Graph — 我的图谱</title>
+  <title>Word Graph — 我的词汇</title>
   <meta charset="utf-8">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -26,9 +26,9 @@
     .logout-btn { font-size: 13px; color: #888; cursor: pointer; background: none; border: none; }
     .logout-btn:hover { color: #E74C3C; }
 
-    .content { max-width: 900px; margin: 32px auto; padding: 0 20px; }
+    .content { max-width: 960px; margin: 32px auto; padding: 0 20px; }
 
-    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
     .page-title { font-size: 22px; font-weight: 700; color: #222; }
     .new-btn {
       padding: 9px 20px;
@@ -43,36 +43,87 @@
     }
     .new-btn:hover { background: #43a047; }
 
-    .stats { display: flex; gap: 16px; margin-bottom: 28px; }
+    .stats { display: flex; gap: 14px; margin-bottom: 24px; }
     .stat-card {
       background: white;
       border-radius: 12px;
-      padding: 16px 20px;
+      padding: 16px 22px;
       flex: 1;
       box-shadow: 0 1px 4px rgba(0,0,0,0.06);
     }
-    .stat-num { font-size: 28px; font-weight: 700; color: #1565C0; }
-    .stat-label { font-size: 12px; color: #888; margin-top: 2px; }
+    .stat-num { font-size: 30px; font-weight: 700; color: #1565C0; }
+    .stat-label { font-size: 12px; color: #888; margin-top: 3px; }
 
-    .section-title { font-size: 14px; font-weight: 600; color: #555; margin-bottom: 14px; letter-spacing: 0.5px; text-transform: uppercase; }
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+      align-items: center;
+    }
+    .search-input {
+      flex: 1;
+      padding: 8px 14px;
+      border: 1px solid #d0d0d0;
+      border-radius: 20px;
+      font-size: 14px;
+      outline: none;
+    }
+    .search-input:focus { border-color: #4CAF50; }
+    .filter-btn {
+      padding: 7px 14px;
+      border-radius: 16px;
+      border: 1px solid #ddd;
+      background: white;
+      font-size: 13px;
+      color: #555;
+      cursor: pointer;
+    }
+    .filter-btn.active { background: #1565C0; color: white; border-color: #1565C0; }
 
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+    }
 
-    .graph-card {
+    .word-card {
       background: white;
       border-radius: 12px;
-      padding: 20px;
+      padding: 16px;
       box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-      cursor: pointer;
       transition: transform 0.15s, box-shadow 0.15s;
-      text-decoration: none;
-      display: block;
+      position: relative;
     }
-    .graph-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.10); }
-    .graph-word { font-size: 22px; font-weight: 700; color: #1565C0; margin-bottom: 8px; }
-    .graph-date { font-size: 11px; color: #aaa; }
+    .word-card:hover { transform: translateY(-2px); box-shadow: 0 4px 14px rgba(0,0,0,0.10); }
+    .word-card.mastered { opacity: 0.65; }
+
+    .word-link { text-decoration: none; display: block; padding-right: 20px; }
+    .word-text { font-size: 20px; font-weight: 700; color: #1565C0; margin-bottom: 6px; }
+    .word-def {
+      font-size: 12px;
+      color: #777;
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+    .mastered-badge { font-size: 12px; color: #4CAF50; font-weight: 600; }
+    .delete-btn {
+      background: none;
+      border: none;
+      color: #ccc;
+      cursor: pointer;
+      font-size: 15px;
+      padding: 2px 4px;
+      line-height: 1;
+      border-radius: 4px;
+    }
+    .delete-btn:hover { color: #E74C3C; background: #fff0f0; }
 
     .empty {
+      grid-column: 1 / -1;
       text-align: center;
       color: #aaa;
       padding: 60px 0;
@@ -87,7 +138,8 @@
   <a class="brand" href="/">Word Graph</a>
   <div class="nav-links">
     <a href="/">生成图谱</a>
-    <a href="/dashboard.html" class="active">我的图谱</a>
+    <a href="/mygraph.html">我的图谱</a>
+    <a href="/dashboard.html" class="active">我的词汇</a>
     <a href="/review.html">复习单词</a>
   </div>
   <span class="username" id="username-label"></span>
@@ -96,26 +148,32 @@
 
 <div class="content">
   <div class="page-header">
-    <div class="page-title">我的图谱</div>
-    <a class="new-btn" href="/">+ 新建图谱</a>
+    <div class="page-title">我的词汇库</div>
+    <a class="new-btn" href="/">+ 探索新词</a>
   </div>
 
   <div class="stats">
     <div class="stat-card">
-      <div class="stat-num" id="stat-graphs">—</div>
-      <div class="stat-label">已生成图谱</div>
-    </div>
-    <div class="stat-card">
       <div class="stat-num" id="stat-words">—</div>
-      <div class="stat-label">接触单词数</div>
+      <div class="stat-label">收录单词</div>
     </div>
     <div class="stat-card">
       <div class="stat-num" id="stat-mastered">—</div>
-      <div class="stat-label">已掌握单词</div>
+      <div class="stat-label">已掌握</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="stat-pct">—</div>
+      <div class="stat-label">掌握率</div>
     </div>
   </div>
 
-  <div class="section-title">探索过的词根</div>
+  <div class="toolbar">
+    <input class="search-input" id="search" placeholder="搜索单词..." oninput="render()" />
+    <button class="filter-btn active" onclick="setFilter('all', this)">全部</button>
+    <button class="filter-btn" onclick="setFilter('unmastered', this)">未掌握</button>
+    <button class="filter-btn" onclick="setFilter('mastered', this)">已掌握</button>
+  </div>
+
   <div class="grid" id="grid">
     <div class="empty">加载中...</div>
   </div>
@@ -129,33 +187,74 @@ function logout() { localStorage.clear(); window.location.href = "/login.html"; 
 if (!getToken()) window.location.href = "/login.html";
 document.getElementById("username-label").textContent = localStorage.getItem("wg_username") || "";
 
+let allWords = [];
+let filter = "all";
+
 async function load() {
-  const [graphsRes, wordsRes] = await Promise.all([
-    fetch("/user/graphs", { headers: authHeaders() }),
-    fetch("/user/words",  { headers: authHeaders() })
-  ]);
-  if (graphsRes.status === 401) { logout(); return; }
+  const res = await fetch("/user/words", { headers: authHeaders() });
+  if (res.status === 401) { logout(); return; }
+  const { words } = await res.json();
+  allWords = words;
+  updateStats();
+  render();
+}
 
-  const { graphs } = await graphsRes.json();
-  const { words }  = await wordsRes.json();
+function setFilter(f, el) {
+  filter = f;
+  document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+  el.classList.add("active");
+  render();
+}
 
-  const mastered = words.filter(w => w.mastered).length;
-  document.getElementById("stat-graphs").textContent   = graphs.length;
-  document.getElementById("stat-words").textContent    = words.length;
+function updateStats() {
+  const total = allWords.length;
+  const mastered = allWords.filter(w => w.mastered).length;
+  document.getElementById("stat-words").textContent = total;
   document.getElementById("stat-mastered").textContent = mastered;
+  document.getElementById("stat-pct").textContent = total ? Math.round(mastered / total * 100) + "%" : "0%";
+}
+
+function render() {
+  const q = document.getElementById("search").value.trim().toLowerCase();
+  let words = allWords;
+  if (filter === "unmastered") words = words.filter(w => !w.mastered);
+  if (filter === "mastered")   words = words.filter(w => w.mastered);
+  if (q) words = words.filter(w => w.word.toLowerCase().includes(q));
 
   const grid = document.getElementById("grid");
-  if (graphs.length === 0) {
-    grid.innerHTML = `<div class="empty" style="grid-column:1/-1">还没有图谱，<a href="/">去生成一个</a></div>`;
+  if (words.length === 0) {
+    grid.innerHTML = allWords.length === 0
+      ? `<div class="empty">词汇库还是空的，<a href="/">去探索第一个词</a></div>`
+      : `<div class="empty">没有匹配的单词</div>`;
     return;
   }
 
-  grid.innerHTML = graphs.map(g => `
-    <a class="graph-card" href="/?word=${encodeURIComponent(g.root_word)}">
-      <div class="graph-word">${g.root_word}</div>
-      <div class="graph-date">${new Date(g.created_at).toLocaleDateString("zh-CN")}</div>
-    </a>
+  grid.innerHTML = words.map(w => `
+    <div class="word-card${w.mastered ? " mastered" : ""}">
+      <a class="word-link" href="/?word=${encodeURIComponent(w.word)}">
+        <div class="word-text">${w.word}</div>
+        <div class="word-def">${w.definition || "暂无释义"}</div>
+      </a>
+      <div class="card-footer">
+        <span class="mastered-badge">${w.mastered ? "✓ 已掌握" : ""}</span>
+        <button class="delete-btn" onclick="deleteWord(event, '${w.word.replace(/'/g, "\\'")}')" title="删除">✕</button>
+      </div>
+    </div>
   `).join("");
+}
+
+async function deleteWord(e, word) {
+  e.preventDefault();
+  e.stopPropagation();
+  if (!confirm(`确定删除「${word}」？`)) return;
+  const res = await fetch(`/user/words?word=${encodeURIComponent(word)}`, {
+    method: "DELETE",
+    headers: authHeaders()
+  });
+  if (!res.ok) return;
+  allWords = allWords.filter(w => w.word !== word);
+  updateStats();
+  render();
 }
 
 load();

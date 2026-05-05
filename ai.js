@@ -5,12 +5,13 @@ async function generateAssociations(word) {
 {
   "definition": "中文释义（含词性，如：n. 苹果；v. 奔跑）",
   "associations": [
-    {"word": "english_word", "type": "synonym"}
+    {"word": "english_word", "type": "synonym", "definition": "关联词中文释义（含词性）"}
   ]
 }
 Rules:
-- definition: concise Chinese explanation with part of speech
+- definition: concise Chinese explanation of "${word}" with part of speech
 - associations: exactly 5 items using common English words
+- each association must include its own "definition" field (concise Chinese with part of speech)
 - type must be one of: synonym(近义词), antonym(反义词), collocation(常用搭配), hypernym(上位词), hyponym(下位词)`;
 
   const res = await axios.post(

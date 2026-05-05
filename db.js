@@ -63,4 +63,13 @@ CREATE TABLE IF NOT EXISTS user_word_progress (
 );
 `);
 
+db.exec(`
+CREATE TABLE IF NOT EXISTS user_excluded_words (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER,
+  word TEXT,
+  UNIQUE(user_id, word)
+);
+`);
+
 module.exports = db;
