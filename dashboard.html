@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Word Graph — 我的图谱</title>
+  <meta charset="utf-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f0f2f5; }
+
+    .header {
+      padding: 0 24px;
+      height: 54px;
+      background: white;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .brand { font-size: 16px; font-weight: 700; color: #333; text-decoration: none; }
+    .nav-links { display: flex; gap: 16px; flex: 1; }
+    .nav-links a { font-size: 13px; color: #555; text-decoration: none; }
+    .nav-links a:hover { color: #4CAF50; }
+    .nav-links a.active { color: #4CAF50; font-weight: 600; }
+    .username { font-size: 13px; color: #333; font-weight: 600; }
+    .logout-btn { font-size: 13px; color: #888; cursor: pointer; background: none; border: none; }
+    .logout-btn:hover { color: #E74C3C; }
+
+    .content { max-width: 900px; margin: 32px auto; padding: 0 20px; }
+
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .page-title { font-size: 22px; font-weight: 700; color: #222; }
+    .new-btn {
+      padding: 9px 20px;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 14px;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .new-btn:hover { background: #43a047; }
+
+    .stats { display: flex; gap: 16px; margin-bottom: 28px; }
+    .stat-card {
+      background: white;
+      border-radius: 12px;
+      padding: 16px 20px;
+      flex: 1;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .stat-num { font-size: 28px; font-weight: 700; color: #1565C0; }
+    .stat-label { font-size: 12px; color: #888; margin-top: 2px; }
+
+    .section-title { font-size: 14px; font-weight: 600; color: #555; margin-bottom: 14px; letter-spacing: 0.5px; text-transform: uppercase; }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
+
+    .graph-card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      text-decoration: none;
+      display: block;
+    }
+    .graph-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.10); }
+    .graph-word { font-size: 22px; font-weight: 700; color: #1565C0; margin-bottom: 8px; }
+    .graph-date { font-size: 11px; color: #aaa; }
+
+    .empty {
+      text-align: center;
+      color: #aaa;
+      padding: 60px 0;
+      font-size: 15px;
+    }
+    .empty a { color: #4CAF50; text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <a class="brand" href="/">Word Graph</a>
+  <div class="nav-links">
+    <a href="/">生成图谱</a>
+    <a href="/dashboard.html" class="active">我的图谱</a>
+    <a href="/review.html">复习单词</a>
+  </div>
+  <span class="username" id="username-label"></span>
+  <button class="logout-btn" onclick="logout()">退出</button>
+</div>
+
+<div class="content">
+  <div class="page-header">
+    <div class="page-title">我的图谱</div>
+    <a class="new-btn" href="/">+ 新建图谱</a>
+  </div>
+
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-num" id="stat-graphs">—</div>
+      <div class="stat-label">已生成图谱</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="stat-words">—</div>
+      <div class="stat-label">接触单词数</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="stat-mastered">—</div>
+      <div class="stat-label">已掌握单词</div>
+    </div>
+  </div>
+
+  <div class="section-title">探索过的词根</div>
+  <div class="grid" id="grid">
+    <div class="empty">加载中...</div>
+  </div>
+</div>
+
+<script>
+function getToken() { return localStorage.getItem("wg_token"); }
+function authHeaders() { return { "Authorization": `Bearer ${getToken()}` }; }
+function logout() { localStorage.clear(); window.location.href = "/login.html"; }
+
+if (!getToken()) window.location.href = "/login.html";
+document.getElementById("username-label").textContent = localStorage.getItem("wg_username") || "";
+
+async function load() {
+  const [graphsRes, wordsRes] = await Promise.all([
+    fetch("/user/graphs", { headers: authHeaders() }),
+    fetch("/user/words",  { headers: authHeaders() })
+  ]);
+  if (graphsRes.status === 401) { logout(); return; }
+
+  const { graphs } = await graphsRes.json();
+  const { words }  = await wordsRes.json();
+
+  const mastered = words.filter(w => w.mastered).length;
+  document.getElementById("stat-graphs").textContent   = graphs.length;
+  document.getElementById("stat-words").textContent    = words.length;
+  document.getElementById("stat-mastered").textContent = mastered;
+
+  const grid = document.getElementById("grid");
+  if (graphs.length === 0) {
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1">还没有图谱，<a href="/">去生成一个</a></div>`;
+    return;
+  }
+
+  grid.innerHTML = graphs.map(g => `
+    <a class="graph-card" href="/?word=${encodeURIComponent(g.root_word)}">
+      <div class="graph-word">${g.root_word}</div>
+      <div class="graph-date">${new Date(g.created_at).toLocaleDateString("zh-CN")}</div>
+    </a>
+  `).join("");
+}
+
+load();
+</script>
+
+</body>
+</html>

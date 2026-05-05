@@ -33,4 +33,34 @@ try { db.exec(`ALTER TABLE nodes ADD COLUMN definition TEXT`); } catch(e) {}
 try { db.exec(`ALTER TABLE edges ADD COLUMN relation_type TEXT`); } catch(e) {}
 try { db.exec(`ALTER TABLE reverse_edges ADD COLUMN relation_type TEXT`); } catch(e) {}
 
+db.exec(`
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  username TEXT UNIQUE,
+  password_hash TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+`);
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS user_graphs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER,
+  root_word TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(user_id, root_word)
+);
+`);
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS user_word_progress (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER,
+  word TEXT,
+  mastered INTEGER DEFAULT 0,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(user_id, word)
+);
+`);
+
 module.exports = db;

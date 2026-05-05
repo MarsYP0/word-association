@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Word Graph — Login</title>
+  <meta charset="utf-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f0f2f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .card {
+      background: white;
+      border-radius: 14px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+      padding: 40px 36px;
+      width: 360px;
+    }
+    .logo { text-align: center; margin-bottom: 28px; }
+    .logo h1 { font-size: 22px; color: #333; }
+    .logo p { font-size: 13px; color: #888; margin-top: 4px; }
+
+    .tabs { display: flex; border-bottom: 2px solid #eee; margin-bottom: 24px; }
+    .tab {
+      flex: 1;
+      text-align: center;
+      padding: 10px;
+      cursor: pointer;
+      font-size: 14px;
+      color: #888;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      transition: all 0.2s;
+    }
+    .tab.active { color: #4CAF50; border-bottom-color: #4CAF50; font-weight: 600; }
+
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-size: 13px; color: #555; margin-bottom: 6px; }
+    input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus { border-color: #4CAF50; }
+
+    button[type="submit"] {
+      width: 100%;
+      padding: 12px;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: background 0.2s;
+    }
+    button[type="submit"]:hover { background: #43a047; }
+    button[type="submit"]:disabled { background: #aaa; cursor: not-allowed; }
+
+    .error {
+      background: #fdecea;
+      color: #c62828;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      margin-bottom: 16px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <div class="logo">
+    <h1>Word Graph</h1>
+    <p>英语词汇联想学习</p>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('login')">登录</div>
+    <div class="tab" onclick="switchTab('register')">注册</div>
+  </div>
+
+  <div id="error" class="error"></div>
+
+  <form id="form" onsubmit="handleSubmit(event)">
+    <div class="form-group">
+      <label>用户名</label>
+      <input id="username" type="text" placeholder="输入用户名" autocomplete="username" required />
+    </div>
+    <div class="form-group">
+      <label>密码</label>
+      <input id="password" type="password" placeholder="输入密码" autocomplete="current-password" required />
+    </div>
+    <button type="submit" id="btn">登录</button>
+  </form>
+</div>
+
+<script>
+let mode = "login";
+
+function switchTab(tab) {
+  mode = tab;
+  document.querySelectorAll(".tab").forEach((el, i) => {
+    el.classList.toggle("active", (i === 0) === (tab === "login"));
+  });
+  document.getElementById("btn").textContent = tab === "login" ? "登录" : "注册";
+  document.getElementById("error").style.display = "none";
+  document.getElementById("password").placeholder = tab === "register" ? "至少6位" : "输入密码";
+}
+
+async function handleSubmit(e) {
+  e.preventDefault();
+  const username = document.getElementById("username").value.trim();
+  const password = document.getElementById("password").value;
+  const btn = document.getElementById("btn");
+  const errorEl = document.getElementById("error");
+
+  btn.disabled = true;
+  errorEl.style.display = "none";
+
+  try {
+    const res = await fetch(`/auth/${mode}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      errorEl.textContent = data.error;
+      errorEl.style.display = "block";
+      return;
+    }
+
+    localStorage.setItem("wg_token", data.token);
+    localStorage.setItem("wg_username", data.username);
+    window.location.href = "/";
+  } catch {
+    errorEl.textContent = "网络错误，请重试";
+    errorEl.style.display = "block";
+  } finally {
+    btn.disabled = false;
+  }
+}
+</script>
+
+</body>
+</html>

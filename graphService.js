@@ -13,6 +13,10 @@ function saveEdge(from, to, type = null) {
   db.prepare(`INSERT INTO reverse_edges (from_word, to_word, relation_type) VALUES (?, ?, ?)`).run(to, from, type);
 }
 
+function saveUserGraph(userId, word) {
+  db.prepare(`INSERT OR IGNORE INTO user_graphs (user_id, root_word) VALUES (?, ?)`).run(userId, word);
+}
+
 async function getWordGraph(word) {
   saveNode(word);
 
@@ -35,11 +39,17 @@ async function getWordGraph(word) {
   return { word, from: "cache", associations: existing.map(e => e.to_word) };
 }
 
-function getGraph(word) {
+function getGraph(word, userId = null) {
   const edges = db.prepare(`SELECT to_word, relation_type FROM edges WHERE from_word = ?`).all(word);
   const wordRow = db.prepare(`SELECT definition FROM nodes WHERE word = ?`).get(word);
 
-  const nodes = [{ data: { id: word, definition: wordRow?.definition || null } }];
+  let progress = {};
+  if (userId) {
+    const rows = db.prepare(`SELECT word, mastered FROM user_word_progress WHERE user_id = ?`).all(userId);
+    progress = Object.fromEntries(rows.map(r => [r.word, r.mastered]));
+  }
+
+  const nodes = [{ data: { id: word, definition: wordRow?.definition || null, mastered: progress[word] ?? 0 } }];
   const edgeList = [];
   const seen = new Set([word]);
 
@@ -47,7 +57,7 @@ function getGraph(word) {
     if (!seen.has(e.to_word)) {
       seen.add(e.to_word);
       const row = db.prepare(`SELECT definition FROM nodes WHERE word = ?`).get(e.to_word);
-      nodes.push({ data: { id: e.to_word, definition: row?.definition || null } });
+      nodes.push({ data: { id: e.to_word, definition: row?.definition || null, mastered: progress[e.to_word] ?? 0 } });
     }
     edgeList.push({
       data: {
@@ -62,4 +72,4 @@ function getGraph(word) {
   return [...nodes, ...edgeList];
 }
 
-module.exports = { getWordGraph, getGraph };
+module.exports = { getWordGraph, getGraph, saveUserGraph };
