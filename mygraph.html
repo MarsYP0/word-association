@@ -123,11 +123,26 @@
 
     /* ── Legend ── */
     .legend {
-      position: fixed; bottom: 20px; right: 20px; background: white;
-      border: 1px solid #e0e0e0; border-radius: 10px; padding: 10px 14px;
+      position: fixed; bottom: 20px; right: 20px;
+      background: white; border: 1px solid #e0e0e0; border-radius: 10px;
       font-size: 11px; box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+      user-select: none; z-index: 150;
     }
-    .legend.panel-open { right: 276px; }
+    .legend-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 10px 6px 12px; cursor: move; gap: 14px;
+      border-radius: 10px 10px 0 0;
+    }
+    .legend-header:hover { background: #fafafa; }
+    .legend-header-title { font-size: 12px; font-weight: 600; color: #555; }
+    .legend-toggle {
+      background: none; border: none; cursor: pointer; font-size: 15px;
+      color: #bbb; line-height: 1; padding: 0; flex-shrink: 0;
+    }
+    .legend-toggle:hover { color: #555; }
+    .legend-body { padding: 0 14px 10px; }
+    .legend.collapsed .legend-body { display: none; }
+    .legend.collapsed .legend-header { border-radius: 10px; }
     .legend-title { font-weight: 600; color: #333; margin-bottom: 6px; }
     .legend-item { display: flex; align-items: center; gap: 7px; margin: 4px 0; color: #555; }
     .legend-dot  { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
@@ -279,16 +294,22 @@
 </div>
 
 <div class="legend" id="legend">
-  <div class="legend-title">节点</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#1565C0"></div>探索过的词根</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#4CAF50"></div>关联词</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#B0BEC5"></div>已掌握</div>
-  <div class="legend-title" style="margin-top:8px;">边（点击可修改/删除）</div>
-  <div class="legend-item"><div class="legend-line" style="background:#4A90D9"></div>synonym</div>
-  <div class="legend-item"><div class="legend-line" style="background:#E74C3C"></div>antonym</div>
-  <div class="legend-item"><div class="legend-line" style="background:#F39C12"></div>collocation</div>
-  <div class="legend-item"><div class="legend-line" style="background:#9B59B6"></div>hypernym</div>
-  <div class="legend-item"><div class="legend-line" style="background:#27AE60"></div>hyponym</div>
+  <div class="legend-header" id="legend-handle">
+    <span class="legend-header-title">图例</span>
+    <button class="legend-toggle" id="legend-toggle" onclick="toggleLegend(event)" title="折叠/展开">−</button>
+  </div>
+  <div class="legend-body">
+    <div class="legend-title">节点</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#1565C0"></div>探索过的词根</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#4CAF50"></div>关联词</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#B0BEC5"></div>已掌握</div>
+    <div class="legend-title" style="margin-top:8px;">边（点击可修改/删除）</div>
+    <div class="legend-item"><div class="legend-line" style="background:#4A90D9"></div>synonym</div>
+    <div class="legend-item"><div class="legend-line" style="background:#E74C3C"></div>antonym</div>
+    <div class="legend-item"><div class="legend-line" style="background:#F39C12"></div>collocation</div>
+    <div class="legend-item"><div class="legend-line" style="background:#9B59B6"></div>hypernym</div>
+    <div class="legend-item"><div class="legend-line" style="background:#27AE60"></div>hyponym</div>
+  </div>
 </div>
 
 <script>
@@ -415,11 +436,9 @@ function openPanel(word, definition, mastered) {
   document.getElementById("connect-form").classList.remove("open");
   populateSelect("connect-target", null, word);
   document.getElementById("info-panel").classList.add("open");
-  document.getElementById("legend").classList.add("panel-open");
 }
 function closePanel() {
   document.getElementById("info-panel").classList.remove("open");
-  document.getElementById("legend").classList.remove("panel-open");
 }
 function updateMasteredBtn() {
   const btn = document.getElementById("mastered-btn");
@@ -570,6 +589,59 @@ function updateStatus() {
 }
 function closeModal(id) { document.getElementById(id).classList.remove("open"); }
 function onOverlayClick(e, id) { if (e.target.id === id) closeModal(id); }
+
+// ─── Legend: drag + edge-snap collapse ───
+(function() {
+  const legend = document.getElementById("legend");
+  const handle = document.getElementById("legend-handle");
+  const toggleBtn = document.getElementById("legend-toggle");
+  const EDGE_THRESHOLD = 80;
+  let dragging = false, offX = 0, offY = 0;
+
+  handle.addEventListener("mousedown", e => {
+    if (toggleBtn.contains(e.target)) return;
+    dragging = true;
+    const rect = legend.getBoundingClientRect();
+    // Convert from bottom/right to top/left so we can move it freely
+    legend.style.bottom = "auto";
+    legend.style.right  = "auto";
+    legend.style.left   = rect.left + "px";
+    legend.style.top    = rect.top  + "px";
+    offX = e.clientX - rect.left;
+    offY = e.clientY - rect.top;
+    e.preventDefault();
+  });
+
+  document.addEventListener("mousemove", e => {
+    if (!dragging) return;
+    const x = Math.max(0, Math.min(window.innerWidth  - legend.offsetWidth,  e.clientX - offX));
+    const y = Math.max(0, Math.min(window.innerHeight - legend.offsetHeight, e.clientY - offY));
+    legend.style.left = x + "px";
+    legend.style.top  = y + "px";
+  });
+
+  document.addEventListener("mouseup", () => {
+    if (!dragging) return;
+    dragging = false;
+    const r = legend.getBoundingClientRect();
+    const nearEdge = r.left < EDGE_THRESHOLD
+      || r.right  > window.innerWidth  - EDGE_THRESHOLD
+      || r.top    < EDGE_THRESHOLD
+      || r.bottom > window.innerHeight - EDGE_THRESHOLD;
+    if (nearEdge && !legend.classList.contains("collapsed")) {
+      legend.classList.add("collapsed");
+      toggleBtn.textContent = "+";
+    }
+  });
+})();
+
+function toggleLegend(e) {
+  e.stopPropagation();
+  const legend    = document.getElementById("legend");
+  const toggleBtn = document.getElementById("legend-toggle");
+  const collapsed = legend.classList.toggle("collapsed");
+  toggleBtn.textContent = collapsed ? "+" : "−";
+}
 
 load();
 </script>

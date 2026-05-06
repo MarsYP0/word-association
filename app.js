@@ -29,6 +29,7 @@ app.get("/word", authMiddleware, async (req, res) => {
   if (!word) return res.status(400).json({ error: "text required" });
   const result = await getWordGraph(word);
   saveUserGraph(req.userId, word);
+  db.prepare(`DELETE FROM user_excluded_words WHERE user_id = ? AND word = ?`).run(req.userId, word);
   res.json(result);
 });
 
@@ -37,6 +38,7 @@ app.get("/graph", authMiddleware, async (req, res) => {
   if (!word) return res.status(400).json({ error: "text required" });
   await getWordGraph(word);
   saveUserGraph(req.userId, word);
+  db.prepare(`DELETE FROM user_excluded_words WHERE user_id = ? AND word = ?`).run(req.userId, word);
   const graph = getGraph(word, req.userId);
   res.json({ elements: graph });
 });
@@ -113,8 +115,13 @@ app.post("/user/add-edge", authMiddleware, (req, res) => {
 app.put("/edges", authMiddleware, (req, res) => {
   const { from_word, to_word, relation_type } = req.body;
   if (!from_word || !to_word || !relation_type) return res.status(400).json({ error: "from_word, to_word, relation_type required" });
-  db.prepare(`UPDATE edges SET relation_type = ? WHERE from_word = ? AND to_word = ?`).run(relation_type, from_word, to_word);
-  db.prepare(`UPDATE reverse_edges SET relation_type = ? WHERE from_word = ? AND to_word = ?`).run(relation_type, to_word, from_word);
+  const upsert = db.prepare(`
+    INSERT INTO user_edge_overrides (user_id, from_word, to_word, relation_type)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(user_id, from_word, to_word) DO UPDATE SET relation_type = excluded.relation_type
+  `);
+  upsert.run(req.userId, from_word, to_word, relation_type);
+  upsert.run(req.userId, to_word, from_word, relation_type);
   res.json({ ok: true });
 });
 
@@ -169,15 +176,18 @@ app.get("/user/graph-data", authMiddleware, (req, res) => {
       SELECT word FROM user_words
       WHERE word NOT IN (SELECT word FROM user_excluded_words WHERE user_id = ?)
     )
-    SELECT e.from_word, e.to_word, e.relation_type
+    SELECT e.from_word, e.to_word,
+           COALESCE(ueo.relation_type, e.relation_type) AS relation_type
     FROM edges e
     JOIN visible uw1 ON uw1.word = e.from_word
     JOIN visible uw2 ON uw2.word = e.to_word
+    LEFT JOIN user_edge_overrides ueo
+      ON ueo.user_id = ? AND ueo.from_word = e.from_word AND ueo.to_word = e.to_word
     WHERE NOT EXISTS (
       SELECT 1 FROM user_excluded_edges uee
       WHERE uee.user_id = ? AND uee.from_word = e.from_word AND uee.to_word = e.to_word
     )
-  `).all(req.userId, req.userId, req.userId, req.userId);
+  `).all(req.userId, req.userId, req.userId, req.userId, req.userId);
 
   const nodes = words.map(w => ({
     data: { id: w.word, definition: w.definition, mastered: w.mastered, isRoot: w.is_root }

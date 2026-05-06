@@ -82,4 +82,15 @@ CREATE TABLE IF NOT EXISTS user_excluded_words (
 );
 `);
 
+db.exec(`
+CREATE TABLE IF NOT EXISTS user_edge_overrides (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER,
+  from_word TEXT,
+  to_word TEXT,
+  relation_type TEXT,
+  UNIQUE(user_id, from_word, to_word)
+);
+`);
+
 module.exports = db;
