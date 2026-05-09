@@ -626,18 +626,23 @@ function closeModal(id) { document.getElementById(id).classList.remove("open"); 
 function onOverlayClick(e, id) { if (e.target.id === id) closeModal(id); }
 
 // ─── Search ───
+let searchAnimTimer = null;
 function searchGraph() {
   if (!cy) return;
   const q = document.getElementById("graph-search").value.trim().toLowerCase();
   const input = document.getElementById("graph-search");
   cy.nodes().removeClass("search-highlight");
   cy.elements().style("opacity", 1);
+  clearTimeout(searchAnimTimer);
   if (!q) { input.classList.remove("no-match"); return; }
   const matched = cy.nodes().filter(n => n.data("id").toLowerCase().includes(q));
   if (!matched.length) { input.classList.add("no-match"); return; }
   input.classList.remove("no-match");
   matched.addClass("search-highlight");
-  cy.animate({ center: { eles: matched.first() }, zoom: Math.max(cy.zoom(), 1.6) }, { duration: 400 });
+  searchAnimTimer = setTimeout(() => {
+    cy.stop();
+    cy.animate({ center: { eles: matched.first() }, zoom: Math.max(cy.zoom(), 1.6) }, { duration: 300 });
+  }, 300);
 }
 
 // ─── Zoom controls ───
