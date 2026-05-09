@@ -130,6 +130,15 @@
       font-size: 15px;
     }
     .empty a { color: #4CAF50; text-decoration: none; }
+
+    .domain-filter { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    .domain-filter-btn {
+      padding: 5px 14px; border-radius: 16px; border: 1.5px solid #e0e0e0;
+      background: white; font-size: 12px; color: #555; cursor: pointer;
+      font-weight: 500; transition: all 0.15s;
+    }
+    .domain-filter-btn:hover { border-color: #aaa; }
+    .domain-filter-btn.active { color: white; border-color: transparent; }
   </style>
 </head>
 <body>
@@ -141,6 +150,7 @@
     <a href="/mygraph.html">我的图谱</a>
     <a href="/dashboard.html" class="active">我的词汇</a>
     <a href="/review.html">复习单词</a>
+    <a href="/domain.html">领域图谱</a>
   </div>
   <span class="username" id="username-label"></span>
   <button class="logout-btn" onclick="logout()">退出</button>
@@ -167,11 +177,13 @@
     </div>
   </div>
 
+  <div class="domain-filter" id="domain-filter"></div>
+
   <div class="toolbar">
     <input class="search-input" id="search" placeholder="搜索单词..." oninput="render()" />
-    <button class="filter-btn active" onclick="setFilter('all', this)">全部</button>
-    <button class="filter-btn" onclick="setFilter('unmastered', this)">未掌握</button>
-    <button class="filter-btn" onclick="setFilter('mastered', this)">已掌握</button>
+    <button class="filter-btn active" onclick="setMasteryFilter('all', this)">全部</button>
+    <button class="filter-btn" onclick="setMasteryFilter('unmastered', this)">未掌握</button>
+    <button class="filter-btn" onclick="setMasteryFilter('mastered', this)">已掌握</button>
   </div>
 
   <div class="grid" id="grid">
@@ -188,19 +200,73 @@ if (!getToken()) window.location.href = "/login.html";
 document.getElementById("username-label").textContent = localStorage.getItem("wg_username") || "";
 
 let allWords = [];
-let filter = "all";
+let masteryFilter = "all";
+let activeDomainId = null;
+let userDomains = [];
 
 async function load() {
-  const res = await fetch("/user/words", { headers: authHeaders() });
-  if (res.status === 401) { logout(); return; }
-  const { words } = await res.json();
+  const [wordsRes, domainsRes] = await Promise.all([
+    fetch("/user/words", { headers: authHeaders() }),
+    fetch("/user/domains", { headers: authHeaders() })
+  ]);
+  if (wordsRes.status === 401) { logout(); return; }
+
+  const { words } = await wordsRes.json();
+  const { domains } = await domainsRes.json();
+
   allWords = words;
+  userDomains = domains || [];
+  renderDomainFilter();
   updateStats();
   render();
 }
 
-function setFilter(f, el) {
-  filter = f;
+function renderDomainFilter() {
+  const el = document.getElementById("domain-filter");
+  if (!userDomains.length) { el.style.display = "none"; return; }
+  el.style.display = "flex";
+  el.innerHTML = `
+    <button class="domain-filter-btn active" id="dfbtn-all"
+      style="background:#555;border-color:transparent;color:white"
+      onclick="setDomainFilter(null, this)">全部领域</button>
+    ${userDomains.map(d => `
+      <button class="domain-filter-btn" id="dfbtn-${d.id}"
+        onclick="setDomainFilter(${d.id}, this)"
+        data-color="${d.color}">${d.name}</button>
+    `).join("")}`;
+}
+
+async function setDomainFilter(domainId, el) {
+  activeDomainId = domainId;
+
+  document.querySelectorAll(".domain-filter-btn").forEach(b => {
+    b.classList.remove("active");
+    b.style.background = "";
+    b.style.borderColor = "";
+    b.style.color = "";
+  });
+  el.classList.add("active");
+  el.style.background = domainId
+    ? (el.dataset.color || "#555")
+    : "#555";
+  el.style.borderColor = "transparent";
+  el.style.color = "white";
+
+  if (domainId) {
+    const res = await fetch(`/user/words?domain_id=${domainId}`, { headers: authHeaders() });
+    const { words } = await res.json();
+    allWords = words;
+  } else {
+    const res = await fetch("/user/words", { headers: authHeaders() });
+    const { words } = await res.json();
+    allWords = words;
+  }
+  updateStats();
+  render();
+}
+
+function setMasteryFilter(f, el) {
+  masteryFilter = f;
   document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
   el.classList.add("active");
   render();
@@ -217,8 +283,8 @@ function updateStats() {
 function render() {
   const q = document.getElementById("search").value.trim().toLowerCase();
   let words = allWords;
-  if (filter === "unmastered") words = words.filter(w => !w.mastered);
-  if (filter === "mastered")   words = words.filter(w => w.mastered);
+  if (masteryFilter === "unmastered") words = words.filter(w => !w.mastered);
+  if (masteryFilter === "mastered")   words = words.filter(w => w.mastered);
   if (q) words = words.filter(w => w.word.toLowerCase().includes(q));
 
   const grid = document.getElementById("grid");

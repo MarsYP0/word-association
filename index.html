@@ -118,6 +118,17 @@
     .legend-title { font-weight: 600; color: #333; margin-bottom: 6px; }
     .legend-item { display: flex; align-items: center; gap: 7px; margin: 4px 0; color: #555; }
     .legend-line { width: 24px; height: 3px; border-radius: 2px; flex-shrink: 0; }
+
+    .zoom-controls {
+      position: fixed; bottom: 140px; right: 20px;
+      display: flex; flex-direction: column; gap: 4px; z-index: 150;
+    }
+    .zoom-btn {
+      width: 32px; height: 32px; background: white; border: 1px solid #e0e0e0;
+      border-radius: 8px; cursor: pointer; font-size: 16px; line-height: 1;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08); display: flex; align-items: center; justify-content: center;
+    }
+    .zoom-btn:hover { background: #f5f5f5; border-color: #bbb; }
   </style>
 </head>
 <body>
@@ -131,6 +142,7 @@
     <a href="/mygraph.html">我的图谱</a>
     <a href="/dashboard.html">我的词汇</a>
     <a href="/review.html">复习单词</a>
+    <a href="/domain.html">领域图谱</a>
     <span class="username" id="username-label"></span>
     <button class="logout-btn" onclick="logout()">退出</button>
   </div>
@@ -146,6 +158,12 @@
     <button class="mastered-btn" id="mastered-btn" onclick="toggleMastered()"></button>
     <button class="explore-btn" onclick="exploreWord()">探索此词的联想 →</button>
   </div>
+</div>
+
+<div class="zoom-controls">
+  <button class="zoom-btn" onclick="if(cy)cy.zoom({level:cy.zoom()*1.25,renderedPosition:{x:cy.width()/2,y:cy.height()/2}})" title="放大">+</button>
+  <button class="zoom-btn" onclick="if(cy)cy.zoom({level:cy.zoom()/1.25,renderedPosition:{x:cy.width()/2,y:cy.height()/2}})" title="缩小">−</button>
+  <button class="zoom-btn" onclick="if(cy)cy.animate({fit:{eles:cy.elements(),padding:40}},{duration:300})" title="适配窗口" style="font-size:13px;">⊡</button>
 </div>
 
 <div class="legend" id="legend">

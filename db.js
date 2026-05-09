@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS reverse_edges (
 try { db.exec(`ALTER TABLE nodes ADD COLUMN definition TEXT`); } catch(e) {}
 try { db.exec(`ALTER TABLE edges ADD COLUMN relation_type TEXT`); } catch(e) {}
 try { db.exec(`ALTER TABLE reverse_edges ADD COLUMN relation_type TEXT`); } catch(e) {}
+try { db.exec(`ALTER TABLE user_graphs ADD COLUMN domain_id INTEGER`); } catch(e) {}
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS users (
@@ -90,6 +91,48 @@ CREATE TABLE IF NOT EXISTS user_edge_overrides (
   to_word TEXT,
   relation_type TEXT,
   UNIQUE(user_id, from_word, to_word)
+);
+`);
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS domains (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT UNIQUE NOT NULL,
+  slug TEXT UNIQUE NOT NULL,
+  description TEXT,
+  color TEXT DEFAULT '#4A90D9',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+`);
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS node_domains (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  word TEXT NOT NULL,
+  domain_id INTEGER NOT NULL,
+  UNIQUE(word, domain_id)
+);
+`);
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS domain_build_jobs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  domain_id INTEGER NOT NULL,
+  status TEXT DEFAULT 'pending',
+  progress INTEGER DEFAULT 0,
+  total INTEGER DEFAULT 0,
+  error TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+`);
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS user_domain_subscriptions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  domain_id INTEGER NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(user_id, domain_id)
 );
 `);
 

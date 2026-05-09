@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Word Graph — 领域图谱</title>
+  <meta charset="utf-8">
+  <script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f0f2f5; display: flex; flex-direction: column; height: 100vh; }
+
+    .header {
+      padding: 0 20px; height: 54px; background: white;
+      border-bottom: 1px solid #e0e0e0; display: flex; align-items: center;
+      gap: 14px; flex-shrink: 0; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .brand { font-size: 16px; font-weight: 700; color: #333; text-decoration: none; }
+    .nav-links { display: flex; gap: 16px; flex: 1; }
+    .nav-links a { font-size: 13px; color: #555; text-decoration: none; }
+    .nav-links a:hover { color: #4CAF50; }
+    .nav-links a.active { color: #4CAF50; font-weight: 600; }
+    .username { font-size: 13px; color: #333; font-weight: 600; }
+    .logout-btn { font-size: 13px; color: #888; cursor: pointer; background: none; border: none; }
+    .logout-btn:hover { color: #E74C3C; }
+
+    /* ── Create bar ── */
+    .create-bar {
+      background: white; border-bottom: 1px solid #e8e8e8;
+      padding: 0 20px; display: flex; align-items: center; gap: 10px;
+      height: 52px; flex-shrink: 0;
+    }
+    .create-bar input {
+      flex: 1; max-width: 280px; padding: 7px 14px;
+      border: 1px solid #d0d0d0; border-radius: 20px;
+      font-size: 13px; outline: none;
+    }
+    .create-bar input:focus { border-color: #6C7AE0; }
+    .create-btn {
+      padding: 7px 18px; background: #6C7AE0; color: white;
+      border: none; border-radius: 20px; cursor: pointer; font-size: 13px;
+      white-space: nowrap;
+    }
+    .create-btn:hover { background: #5a68d0; }
+    .create-btn:disabled { background: #aaa; cursor: not-allowed; }
+    .create-hint { font-size: 12px; color: #aaa; }
+
+    /* ── Build progress ── */
+    .build-progress {
+      display: none; align-items: center; gap: 10px; margin-left: 16px;
+    }
+    .build-progress.visible { display: flex; }
+    .build-spinner {
+      width: 16px; height: 16px; border: 2px solid #e0e0e0;
+      border-top-color: #6C7AE0; border-radius: 50%;
+      animation: spin 0.8s linear infinite; flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .build-text { font-size: 12px; color: #666; }
+    .build-bar-wrap { width: 120px; height: 4px; background: #e0e0e0; border-radius: 2px; }
+    .build-bar-fill { height: 100%; background: #6C7AE0; border-radius: 2px; transition: width 0.3s; }
+
+    /* ── Domain tabs bar ── */
+    .domain-bar {
+      background: white; border-bottom: 1px solid #e8e8e8;
+      padding: 0 20px; display: flex; align-items: center; gap: 8px;
+      min-height: 46px; flex-shrink: 0; flex-wrap: wrap; padding-top: 4px; padding-bottom: 4px;
+    }
+    .domain-bar-label { font-size: 12px; color: #bbb; margin-right: 4px; white-space: nowrap; }
+    .domain-tab {
+      display: flex; align-items: center; gap: 6px;
+      padding: 5px 14px; border-radius: 20px; border: 1.5px solid #e0e0e0;
+      background: white; cursor: pointer; font-size: 13px; font-weight: 500;
+      color: #555; transition: all 0.15s; white-space: nowrap;
+    }
+    .domain-tab:hover { border-color: #aaa; color: #333; }
+    .domain-tab.active { color: white; border-color: transparent; }
+    .tab-count { font-size: 10px; opacity: 0.7; }
+
+    /* Subscribe button inside tab */
+    .sub-btn {
+      font-size: 11px; padding: 2px 7px; border-radius: 10px;
+      border: none; cursor: pointer; font-weight: 600; transition: all 0.15s;
+    }
+    .sub-btn.not-subbed { background: rgba(255,255,255,0.25); color: white; }
+    .sub-btn.not-subbed:hover { background: rgba(255,255,255,0.4); }
+    .sub-btn.subbed { background: rgba(0,0,0,0.12); color: rgba(255,255,255,0.8); }
+    /* Sub button when tab is not active */
+    .domain-tab:not(.active) .sub-btn { background: #e8e8e8; color: #555; }
+    .domain-tab:not(.active) .sub-btn.subbed { background: #e8f5e9; color: #388e3c; }
+    .domain-tab:not(.active) .sub-btn:hover { background: #d0d0d0; }
+
+    .graph-status { font-size: 12px; color: #aaa; margin-left: auto; }
+
+    /* ── Layout ── */
+    .main { display: flex; flex: 1; overflow: hidden; }
+    #graph { flex: 1; position: relative; }
+
+    .center-state {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      text-align: center; color: #bbb; user-select: none;
+    }
+    .center-state .icon { font-size: 48px; margin-bottom: 12px; }
+    .center-state p { font-size: 14px; line-height: 1.6; }
+    .mini-spinner {
+      width: 36px; height: 36px; border: 3px solid #e0e0e0;
+      border-top-color: #6C7AE0; border-radius: 50%;
+      animation: spin 0.8s linear infinite; margin: 0 auto 12px;
+    }
+
+    /* ── Node info panel ── */
+    .info-panel {
+      width: 270px; background: white; border-left: 1px solid #e0e0e0;
+      padding: 20px; display: none; flex-direction: column; gap: 14px;
+      overflow-y: auto; flex-shrink: 0;
+    }
+    .info-panel.open { display: flex; }
+    .panel-close { align-self: flex-end; cursor: pointer; color: #aaa; font-size: 18px; background: none; border: none; }
+    .panel-close:hover { color: #333; }
+    .panel-word { font-size: 26px; font-weight: 700; color: #1565C0; }
+    .panel-def { font-size: 14px; color: #555; line-height: 1.6; }
+    .panel-def.empty { color: #bbb; font-style: italic; }
+    .panel-divider { border: none; border-top: 1px solid #f0f0f0; }
+    .panel-section-title { font-size: 11px; font-weight: 600; color: #aaa; text-transform: uppercase; }
+    .explore-btn {
+      padding: 9px; border-radius: 8px; border: 1px solid #d0d0d0;
+      background: white; cursor: pointer; font-size: 13px; color: #555;
+      text-decoration: none; display: block; text-align: center;
+    }
+    .explore-btn:hover { border-color: #4CAF50; color: #4CAF50; }
+    .neighbors-list { display: flex; flex-wrap: wrap; gap: 6px; }
+    .neighbor-tag {
+      padding: 3px 10px; background: #f0f0f0; border-radius: 12px;
+      font-size: 12px; color: #555; cursor: pointer;
+    }
+    .neighbor-tag:hover { background: #e0e0e0; }
+
+    /* ── Graph search ── */
+    .graph-search {
+      padding: 5px 12px; border: 1px solid #d0d0d0; border-radius: 16px;
+      font-size: 13px; width: 150px; outline: none;
+    }
+    .graph-search:focus { border-color: #6C7AE0; }
+    .graph-search.no-match { border-color: #E74C3C; }
+
+    /* ── Zoom controls ── */
+    .zoom-controls {
+      position: fixed; bottom: 180px; right: 20px;
+      display: flex; flex-direction: column; gap: 4px; z-index: 150;
+    }
+    .zoom-btn {
+      width: 32px; height: 32px; background: white; border: 1px solid #e0e0e0;
+      border-radius: 8px; cursor: pointer; font-size: 16px; line-height: 1;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08); display: flex; align-items: center; justify-content: center;
+    }
+    .zoom-btn:hover { background: #f5f5f5; border-color: #bbb; }
+
+    .tooltip {
+      position: fixed; background: rgba(30,30,30,0.88); color: white;
+      padding: 8px 13px; border-radius: 8px; font-size: 13px;
+      pointer-events: none; display: none; max-width: 260px;
+      z-index: 100; line-height: 1.5;
+    }
+
+    .legend {
+      position: fixed; bottom: 20px; right: 20px;
+      background: white; border: 1px solid #e0e0e0; border-radius: 10px;
+      font-size: 11px; box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+      user-select: none; z-index: 150;
+    }
+    .legend-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 10px 6px 12px; cursor: move; gap: 14px; border-radius: 10px 10px 0 0;
+    }
+    .legend-header:hover { background: #fafafa; }
+    .legend-header-title { font-size: 12px; font-weight: 600; color: #555; }
+    .legend-toggle { background: none; border: none; cursor: pointer; font-size: 15px; color: #bbb; line-height: 1; padding: 0; }
+    .legend-toggle:hover { color: #555; }
+    .legend-body { padding: 0 14px 10px; }
+    .legend.collapsed .legend-body { display: none; }
+    .legend.collapsed .legend-header { border-radius: 10px; }
+    .legend-title { font-weight: 600; color: #333; margin-bottom: 6px; }
+    .legend-item { display: flex; align-items: center; gap: 7px; margin: 4px 0; color: #555; }
+    .legend-line { width: 24px; height: 3px; border-radius: 2px; flex-shrink: 0; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <a class="brand" href="/">Word Graph</a>
+  <div class="nav-links">
+    <a href="/">生成图谱</a>
+    <a href="/mygraph.html">我的图谱</a>
+    <a href="/dashboard.html">我的词汇</a>
+    <a href="/review.html">复习单词</a>
+    <a href="/domain.html" class="active">领域图谱</a>
+  </div>
+  <span class="username" id="username-label"></span>
+  <button class="logout-btn" onclick="logout()">退出</button>
+</div>
+
+<!-- Create new domain -->
+<div class="create-bar">
+  <input id="domain-input" placeholder="输入领域名称，如：Blockchain、量子计算..."
+    onkeydown="if(event.key==='Enter') createDomain()" />
+  <button class="create-btn" id="create-btn" onclick="createDomain()">生成领域图谱</button>
+  <input class="graph-search" id="graph-search" placeholder="搜索节点..."
+    oninput="searchGraph()" onkeydown="if(event.key==='Escape'){this.value='';searchGraph()}" />
+  <button class="create-btn" id="label-toggle-btn" onclick="toggleEdgeLabels()"
+    style="background:#888;padding:6px 12px;font-size:12px;">隐藏边标签</button>
+  <div class="build-progress" id="build-progress">
+    <div class="build-spinner"></div>
+    <div>
+      <div class="build-text" id="build-text">正在生成种子词...</div>
+      <div class="build-bar-wrap">
+        <div class="build-bar-fill" id="build-bar" style="width:0%"></div>
+      </div>
+    </div>
+  </div>
+  <span class="create-hint" id="create-hint">AI 将自动生成25个种子词并扩展关联词</span>
+</div>
+
+<!-- Domain tabs -->
+<div class="domain-bar" id="domain-bar">
+  <span class="domain-bar-label">已有领域</span>
+  <span id="domain-tabs-inner" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;"></span>
+  <span class="graph-status" id="graph-status"></span>
+</div>
+
+<div class="main">
+  <div id="graph" style="position:relative;">
+    <div class="center-state" id="center-state">
+      <div class="icon">🗂️</div>
+      <p>输入领域名称创建图谱<br>或从上方选择已有领域浏览</p>
+    </div>
+  </div>
+
+  <div class="info-panel" id="info-panel">
+    <button class="panel-close" onclick="closePanel()">✕</button>
+    <div class="panel-word" id="panel-word"></div>
+    <div class="panel-def" id="panel-def"></div>
+    <a class="explore-btn" id="explore-btn" href="#">探索此词的联想 →</a>
+    <hr class="panel-divider">
+    <div class="panel-section-title">关联词</div>
+    <div class="neighbors-list" id="neighbors-list"></div>
+  </div>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<div class="zoom-controls">
+  <button class="zoom-btn" onclick="zoomIn()"  title="放大">+</button>
+  <button class="zoom-btn" onclick="zoomOut()" title="缩小">−</button>
+  <button class="zoom-btn" onclick="fitGraph()" title="适配窗口" style="font-size:13px;">⊡</button>
+</div>
+
+<div class="legend" id="legend">
+  <div class="legend-header" id="legend-handle">
+    <span class="legend-header-title">图例</span>
+    <button class="legend-toggle" id="legend-toggle" onclick="toggleLegend(event)">−</button>
+  </div>
+  <div class="legend-body">
+    <div class="legend-title">边类型</div>
+    <div class="legend-item"><div class="legend-line" style="background:#4A90D9"></div>synonym 近义词</div>
+    <div class="legend-item"><div class="legend-line" style="background:#E74C3C"></div>antonym 反义词</div>
+    <div class="legend-item"><div class="legend-line" style="background:#F39C12"></div>collocation 搭配</div>
+    <div class="legend-item"><div class="legend-line" style="background:#9B59B6"></div>hypernym 上位词</div>
+    <div class="legend-item"><div class="legend-line" style="background:#27AE60"></div>hyponym 下位词</div>
+    <div class="legend-item"><div class="legend-line" style="background:#95A5A6"></div>related 相关</div>
+  </div>
+</div>
+
+<script>
+const TYPE_COLORS = {
+  synonym: '#4A90D9', antonym: '#E74C3C', collocation: '#F39C12',
+  hypernym: '#9B59B6', hyponym: '#27AE60', related: '#95A5A6'
+};
+
+function getToken() { return localStorage.getItem("wg_token"); }
+function authFetch(url, opts = {}) {
+  return fetch(url, {
+    ...opts,
+    headers: { "Authorization": `Bearer ${getToken()}`, "Content-Type": "application/json", ...(opts.headers || {}) }
+  });
+}
+function logout() { localStorage.clear(); window.location.href = "/login.html"; }
+
+if (!getToken()) window.location.href = "/login.html";
+document.getElementById("username-label").textContent = localStorage.getItem("wg_username") || "";
+
+let cy = null;
+let currentDomainId = null;
+let subscribedIds = new Set();
+let pollTimer = null;
+let buildingDomainId = null;
+
+// ─── Init ───
+async function init() {
+  const [domainsRes, userDomainsRes] = await Promise.all([
+    fetch("/domains"),
+    authFetch("/user/domains")
+  ]);
+  const { domains } = await domainsRes.json();
+  const { domains: userDomains } = await userDomainsRes.json();
+
+  subscribedIds = new Set((userDomains || []).map(d => d.id));
+  renderDomainTabs(domains || []);
+}
+
+function renderDomainTabs(domains) {
+  const inner = document.getElementById("domain-tabs-inner");
+  if (!domains.length) {
+    inner.innerHTML = `<span style="font-size:12px;color:#ccc;">暂无领域，输入名称创建第一个</span>`;
+    return;
+  }
+  inner.innerHTML = domains.map(d => buildTabHTML(d)).join("");
+}
+
+function buildTabHTML(d) {
+  const isActive = d.id === currentDomainId;
+  const isSubbed = subscribedIds.has(d.id);
+  const activeStyle = isActive ? `style="background:${d.color};border-color:transparent;color:white"` : "";
+  const subLabel = isSubbed ? "✓ 已加入" : "+ 加入图谱";
+  const subClass = isSubbed ? "subbed" : "not-subbed";
+  return `
+    <button class="domain-tab${isActive ? " active" : ""}" id="tab-${d.id}"
+      data-id="${d.id}" data-color="${d.color}" ${activeStyle}
+      onclick="selectDomain(${d.id}, '${d.color}')">
+      ${d.name} <span class="tab-count">(${d.word_count || 0}词)</span>
+      <span class="sub-btn ${subClass}" id="sub-${d.id}"
+        onclick="toggleSubscribe(event, ${d.id})">${subLabel}</span>
+    </button>`;
+}
+
+// ─── Create domain ───
+async function createDomain() {
+  const name = document.getElementById("domain-input").value.trim();
+  if (!name) return;
+
+  const btn = document.getElementById("create-btn");
+  btn.disabled = true;
+  document.getElementById("create-hint").style.display = "none";
+  showBuildProgress("正在生成种子词...", 0, 0);
+
+  const res = await authFetch("/domains", { method: "POST", body: JSON.stringify({ name }) });
+  if (!res.ok) {
+    btn.disabled = false;
+    hideBuildProgress();
+    document.getElementById("create-hint").style.display = "";
+    return;
+  }
+
+  const domain = await res.json();
+  buildingDomainId = domain.id;
+  document.getElementById("domain-input").value = "";
+
+  // Reload tabs to show the new domain
+  await refreshDomains();
+  startPolling(domain.id);
+}
+
+function startPolling(domainId) {
+  clearInterval(pollTimer);
+  pollTimer = setInterval(async () => {
+    const res = await fetch(`/domains/${domainId}/status`);
+    const job = await res.json();
+
+    if (job.status === "generating_seeds") {
+      showBuildProgress("正在生成种子词...", 0, 1);
+    } else if (job.status === "building") {
+      const pct = job.total ? Math.round(job.progress / job.total * 100) : 0;
+      showBuildProgress(`扩展关联词 ${job.progress}/${job.total}`, pct, 100);
+    } else if (job.status === "done" || job.status === "error" || job.status === "none") {
+      clearInterval(pollTimer);
+      hideBuildProgress();
+      document.getElementById("create-btn").disabled = false;
+      document.getElementById("create-hint").style.display = "";
+      buildingDomainId = null;
+      await refreshDomains();
+      if (job.status === "done") selectDomain(domainId, null);
+    }
+  }, 2000);
+}
+
+function showBuildProgress(text, pct, total) {
+  document.getElementById("build-progress").classList.add("visible");
+  document.getElementById("build-text").textContent = text;
+  document.getElementById("build-bar").style.width = (total > 0 ? pct : 20) + "%";
+}
+function hideBuildProgress() {
+  document.getElementById("build-progress").classList.remove("visible");
+  document.getElementById("build-bar").style.width = "0%";
+}
+
+async function refreshDomains() {
+  const res = await fetch("/domains");
+  const { domains } = await res.json();
+  renderDomainTabs(domains || []);
+  // Re-apply active state
+  if (currentDomainId) {
+    const tab = document.getElementById(`tab-${currentDomainId}`);
+    if (tab) {
+      const color = tab.dataset.color;
+      tab.classList.add("active");
+      tab.style.background = color;
+      tab.style.borderColor = "transparent";
+      tab.style.color = "white";
+    }
+  }
+}
+
+// ─── Select domain → load graph ───
+async function selectDomain(domainId, color) {
+  if (currentDomainId === domainId) return;
+  currentDomainId = domainId;
+
+  document.querySelectorAll(".domain-tab").forEach(t => {
+    t.classList.remove("active");
+    t.style.background = "";
+    t.style.borderColor = "";
+    t.style.color = "";
+  });
+  const tab = document.getElementById(`tab-${domainId}`);
+  if (tab) {
+    const tabColor = color || tab.dataset.color;
+    tab.classList.add("active");
+    tab.style.background = tabColor;
+    tab.style.borderColor = "transparent";
+    tab.style.color = "white";
+  }
+
+  closePanel();
+  showLoading();
+  document.getElementById("graph-status").textContent = "";
+
+  const res = await fetch(`/domains/${domainId}/graph`);
+  if (!res.ok) { showEmpty("加载失败，请重试"); return; }
+  const { domain, elements } = await res.json();
+
+  if (!elements || elements.length === 0) {
+    showEmpty("该领域暂无词汇，可能仍在构建中");
+    return;
+  }
+
+  hideState();
+  const nodeCount = elements.filter(e => !e.data.source).length;
+  const edgeCount = elements.filter(e =>  e.data.source).length;
+  document.getElementById("graph-status").textContent = `${nodeCount} 个词  ${edgeCount} 条关联`;
+
+  if (cy) cy.destroy();
+
+  cy = cytoscape({
+    container: document.getElementById("graph"),
+    elements,
+    style: [
+      {
+        selector: "node",
+        style: {
+          label: "data(id)",
+          "background-color": domain.color || "#6C7AE0",
+          color: "white", "text-valign": "center", "text-halign": "center",
+          "font-size": "11px", "font-weight": "bold",
+          width: 60, height: 60, "text-wrap": "wrap", "text-max-width": "54px"
+        }
+      },
+      {
+        selector: "edge",
+        style: {
+          width: 2, "line-color": "#95A5A6",
+          label: "data(type)", "font-size": "9px", color: "#888",
+          "text-rotation": "autorotate", "text-margin-y": -7,
+          "text-background-color": "white", "text-background-opacity": 0.7, "text-background-padding": "2px"
+        }
+      },
+      ...Object.entries(TYPE_COLORS).map(([type, c]) => ({
+        selector: `edge[type = "${type}"]`, style: { "line-color": c }
+      })),
+      { selector: "node.search-highlight", style: { "border-width": 4, "border-color": "#FFD600", "border-opacity": 1 } }
+    ],
+    layout: { name: "cose", padding: 50, nodeRepulsion: 8000, animate: false }
+  });
+
+  const tooltip = document.getElementById("tooltip");
+  cy.on("mouseover", "node", e => {
+    const d = e.target.data();
+    tooltip.innerHTML = `<strong>${d.id}</strong>${d.definition ? "<br>" + d.definition : ""}`;
+    tooltip.style.display = "block";
+    cy.elements().not(e.target.closedNeighborhood()).style("opacity", 0.15);
+  });
+  cy.on("mousemove", e => {
+    tooltip.style.left = (e.originalEvent.clientX + 14) + "px";
+    tooltip.style.top  = (e.originalEvent.clientY + 14) + "px";
+  });
+  cy.on("mouseout", "node", () => {
+    tooltip.style.display = "none";
+    cy.elements().style("opacity", 1);
+  });
+  cy.on("tap", "node", e => { tooltip.style.display = "none"; openPanel(e.target); });
+  cy.on("tap", e => { if (e.target === cy) closePanel(); });
+}
+
+// ─── Subscribe / unsubscribe ───
+async function toggleSubscribe(event, domainId) {
+  event.stopPropagation();
+  const btn = document.getElementById(`sub-${domainId}`);
+  const isSubbed = subscribedIds.has(domainId);
+
+  if (isSubbed) {
+    await authFetch(`/user/domains/${domainId}`, { method: "DELETE" });
+    subscribedIds.delete(domainId);
+    btn.textContent = "+ 加入图谱";
+    btn.className = "sub-btn not-subbed";
+  } else {
+    btn.textContent = "添加中...";
+    const res = await authFetch(`/user/domains/${domainId}`, { method: "POST" });
+    if (res.ok) {
+      const { added } = await res.json();
+      subscribedIds.add(domainId);
+      btn.textContent = "✓ 已加入";
+      btn.className = "sub-btn subbed";
+      // brief confirmation
+      setTimeout(() => {
+        if (subscribedIds.has(domainId)) btn.textContent = "✓ 已加入";
+      }, 1500);
+    } else {
+      btn.textContent = "+ 加入图谱";
+    }
+  }
+}
+
+// ─── Node panel ───
+function openPanel(node) {
+  const d = node.data();
+  document.getElementById("panel-word").textContent = d.id;
+  const defEl = document.getElementById("panel-def");
+  defEl.textContent = d.definition || "暂无释义";
+  defEl.className = "panel-def" + (d.definition ? "" : " empty");
+  document.getElementById("explore-btn").href = `/?word=${encodeURIComponent(d.id)}`;
+
+  const neighbors = node.neighborhood("node").map(n => n.data("id"));
+  document.getElementById("neighbors-list").innerHTML = neighbors.map(w =>
+    `<span class="neighbor-tag" onclick="jumpToNode('${w}')">${w}</span>`
+  ).join("");
+
+  document.getElementById("info-panel").classList.add("open");
+}
+function closePanel() { document.getElementById("info-panel").classList.remove("open"); }
+function jumpToNode(word) {
+  if (!cy) return;
+  const node = cy.getElementById(word);
+  if (node.length) { cy.animate({ center: { eles: node }, zoom: 1.4 }, { duration: 400 }); openPanel(node); }
+}
+
+// ─── UI state helpers ───
+function showLoading() {
+  const s = document.getElementById("center-state");
+  s.innerHTML = `<div class="mini-spinner"></div><p>加载领域图谱中...</p>`;
+  s.style.display = "block";
+}
+function showEmpty(msg) {
+  const s = document.getElementById("center-state");
+  s.innerHTML = `<div class="icon">📭</div><p>${msg}</p>`;
+  s.style.display = "block";
+}
+function hideState() { document.getElementById("center-state").style.display = "none"; }
+
+// ─── Search ───
+function searchGraph() {
+  if (!cy) return;
+  const q = document.getElementById("graph-search").value.trim().toLowerCase();
+  const input = document.getElementById("graph-search");
+  cy.nodes().removeClass("search-highlight");
+  cy.elements().style("opacity", 1);
+  if (!q) { input.classList.remove("no-match"); return; }
+  const matched = cy.nodes().filter(n => n.data("id").toLowerCase().includes(q));
+  if (!matched.length) { input.classList.add("no-match"); return; }
+  input.classList.remove("no-match");
+  matched.addClass("search-highlight");
+  cy.animate({ center: { eles: matched.first() }, zoom: Math.max(cy.zoom(), 1.6) }, { duration: 400 });
+}
+
+// ─── Zoom controls ───
+function zoomIn()  { if (cy) cy.zoom({ level: cy.zoom() * 1.25, renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } }); }
+function zoomOut() { if (cy) cy.zoom({ level: cy.zoom() / 1.25, renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } }); }
+function fitGraph() { if (cy) cy.animate({ fit: { eles: cy.elements(), padding: 40 } }, { duration: 300 }); }
+
+// ─── Edge label toggle ───
+let showEdgeLabels = true;
+function toggleEdgeLabels() {
+  showEdgeLabels = !showEdgeLabels;
+  if (cy) cy.edges().style("label", showEdgeLabels ? "data(type)" : "");
+  document.getElementById("label-toggle-btn").textContent = showEdgeLabels ? "隐藏边标签" : "显示边标签";
+}
+
+// ─── Legend ───
+(function() {
+  const legend = document.getElementById("legend");
+  const handle = document.getElementById("legend-handle");
+  const toggleBtn = document.getElementById("legend-toggle");
+  let dragging = false, offX = 0, offY = 0;
+  handle.addEventListener("mousedown", e => {
+    if (toggleBtn.contains(e.target)) return;
+    dragging = true;
+    const r = legend.getBoundingClientRect();
+    legend.style.bottom = "auto"; legend.style.right = "auto";
+    legend.style.left = r.left + "px"; legend.style.top = r.top + "px";
+    offX = e.clientX - r.left; offY = e.clientY - r.top; e.preventDefault();
+  });
+  document.addEventListener("mousemove", e => {
+    if (!dragging) return;
+    legend.style.left = Math.max(0, Math.min(window.innerWidth - legend.offsetWidth, e.clientX - offX)) + "px";
+    legend.style.top  = Math.max(0, Math.min(window.innerHeight - legend.offsetHeight, e.clientY - offY)) + "px";
+  });
+  document.addEventListener("mouseup", () => { dragging = false; });
+})();
+function toggleLegend(e) {
+  e.stopPropagation();
+  const legend = document.getElementById("legend");
+  legend.classList.toggle("collapsed");
+  document.getElementById("legend-toggle").textContent = legend.classList.contains("collapsed") ? "+" : "−";
+}
+
+init();
+</script>
+
+</body>
+</html>
